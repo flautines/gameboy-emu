@@ -1,0 +1,6 @@
+# Descarta el directorio 'build' en raíz
+/build/
+/roms/
+
+# Descarta el ejecutable
+/gameboy-emu
