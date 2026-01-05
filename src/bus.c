@@ -89,5 +89,11 @@ void bus_write(GameBoy* gb, u16 address, u8 value) {
         // TODO: Algunos registros son de solo lectura o tienen efectos secundarios
         gb->bus.io[address - 0xFF00] = value;
     }
+    else if (address < 0xFFFF) {
+        gb->bus.hram[address - 0xFF80] = value;
+    }
+    else if (address == 0xFFFF) {
+        gb->bus.ie_register = value;
+    }
     
 }

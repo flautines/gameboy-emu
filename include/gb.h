@@ -11,11 +11,11 @@ typedef struct Ppu Ppu;
 // ... otros componentes
 
 // El contexto global de la emulación
-typedef struct {
+struct GameBoy {
     Bus bus;
     bool paused;
     // Contador global de ciclos de sistema
     u64 ticks; 
-} GameBoy;
+};
 
 #endif
