@@ -9,10 +9,9 @@ int main(void) {
     GameBoy gb;
 
     // 2. Inicialización simple (limpiar basura de memoria)
-    // En el futuro haremos una función gb_init(&gb)
-    //gb.cpu.pc = 0x0100;
+    cpu_init(&gb.cpu);
 
-    //printf("GameBoy creada. PC inicial: 0x%04X\n", gb.cpu.pc);
+    printf("GameBoy creada. PC inicial: 0x%04X\n", gb.cpu.PC);
 
     // 3. Prueba de VRAM (Zona Video 0x8000 - 0x9FFF)
     printf("\n[TEST] Escribiendo 0xAA en VRAM (0x8010)...\n");
@@ -36,6 +35,10 @@ int main(void) {
     // Leemos de nuevo (debería ser 0 porque no cargamos cartucho y el bus_read devuelve 0 en ROM por defecto)
     u8 val_rom = bus_read(&gb, 0x0100);
     printf("[TEST] Leído de ROM: 0x%02X (Debería ser 0)\n", val_rom);
+
+    // Ejecutamos un ciclo
+    cpu_step(&gb);
+    printf("\n[TEST] Despues de ejecutar NOP: PC: 0x%04X\n", gb.cpu.PC);
 
     printf("\n--- TEST FINALIZADO CON ÉXITO ---\n");
     return 0;
