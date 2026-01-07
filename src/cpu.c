@@ -631,6 +631,8 @@ void op_and_a_r(GameBoy* gb) {
 }
 
 // XOR A, r: XOR registro con A
+// XOR A, d8 si el opcode es 0xEE
+// XOR A, (HL) si el registro fuente es 110
 void op_xor_a_r(GameBoy* gb) {
     // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
