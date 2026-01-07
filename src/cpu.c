@@ -21,6 +21,7 @@ void op_add_addc(GameBoy* gb);
 void op_sub_sbc_a_r(GameBoy* gb);
 void op_and_a_r(GameBoy* gb);
 void op_xor_a_r(GameBoy* gb);
+void op_or_a_r(GameBoy* gb);
 
 // ... otras declaraciones de instrucciones ...
 
@@ -202,7 +203,15 @@ Instruction instruction_set[256] = {
     [0xAD] = { .func = op_xor_a_r, .name= "XOR L", .cycles= 1, .length= 1 },
     [0xAE] = { .func = op_xor_a_r, .name= "XOR (HL)",.cycles=2,.length=1},
     [0xAF] = { .func = op_xor_a_r, .name = "XOR A", .cycles = 1, .length = 1 },
-    [0xB0 ... 0xC5] = {.func=NULL,.name="UNIMPLEMENTED",.cycles=0,.length=1},
+    [0xB0] = { .func = op_or_a_r, .name = "OR B", .cycles = 1, .length = 1 },
+    [0xB1] = { .func = op_or_a_r, .name = "OR C", .cycles = 1, .length = 1 },
+    [0xB2] = { .func = op_or_a_r, .name = "OR D", .cycles = 1, .length = 1 },
+    [0xB3] = { .func = op_or_a_r, .name = "OR E", .cycles = 1, .length = 1 },
+    [0xB4] = { .func = op_or_a_r, .name = "OR H", .cycles = 1, .length = 1 },
+    [0xB5] = { .func = op_or_a_r, .name = "OR L", .cycles = 1, .length = 1 },
+    [0xB6] = { .func = op_or_a_r, .name = "OR (HL)", .cycles = 2, .length = 1 },
+    [0xB7] = { .func = op_or_a_r, .name = "OR A", .cycles = 1, .length = 1 },
+    [0xB8 ... 0xC5] = {.func=NULL,.name="UNIMPLEMENTED",.cycles=0,.length=1},
     [0xC6] = { .func = op_add_addc, .name = "ADD A,d8", .cycles = 2, .length = 2 },
     [0xC7 ... 0xCD] = {.func=NULL,.name="UNIMPLEMENTED",.cycles=0,.length=1},
     [0xCE] = { .func = op_add_addc, .name = "ADC A,d8", .cycles = 2, .length = 2 },
@@ -210,7 +219,9 @@ Instruction instruction_set[256] = {
     [0xE6] = { .func = op_and_a_r, .name = "AND d8", .cycles = 2, .length = 2 },
     [0xE7 ... 0xED] = {.func=NULL,.name="UNIMPLEMENTED",.cycles=0,.length=1},
     [0xEE] = { .func = op_xor_a_r, .name = "XOR d8", .cycles = 2, .length = 2 },
-    [0xEF ... 0xFF] = {.func=NULL,.name="UNIMPLEMENTED",.cycles=0,.length=1},
+    [0xEF ... 0xF5] = {.func=NULL,.name="UNIMPLEMENTED",.cycles=0,.length=1},
+    [0xF6] = { .func = op_or_a_r, .name = "OR d8", .cycles = 2, .length = 2 },
+    [0xF7 ... 0xFF] = {.func=NULL,.name="UNIMPLEMENTED",.cycles=0,.length=1},
     
 };  
 
@@ -632,7 +643,7 @@ void op_and_a_r(GameBoy* gb) {
 
 // XOR A, r: XOR registro con A
 // XOR A, d8 si el opcode es 0xEE
-// XOR A, (HL) si el registro fuente es 110
+// XOR A, (HL) si el registro fuente es b110
 void op_xor_a_r(GameBoy* gb) {
     // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
@@ -669,3 +680,45 @@ void op_xor_a_r(GameBoy* gb) {
     gb->cpu.F = 0; // XOR borra todos los flags
     gb->cpu.F |= CHECK_ZERO(gb->cpu.A);
 }
+
+// OR A, r: OR registro con A
+// OR A, d8 si el opcode es 0xF6
+// OR A, (HL) si el registro fuente es b110
+void op_or_a_r(GameBoy* gb) {
+    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+
+    // 2. Extraemos el índice del registro fuente
+    // Formato del opcode: 10101sss
+    int src_index = opcode & 0x07; // Bits 2-0
+    u8* src_ptr = get_register_ptr(&gb->cpu, src_index);
+
+    // 3. Obtenemos el segundo operando
+    u8 value = 0;
+    if (opcode == 0xF6) {
+        // OR A, d8
+        value = bus_read(gb, gb->cpu.PC);
+        gb->cpu.PC += 1; // Avanzamos PC por el byte inmediato
+    }
+    else if (src_ptr && src_index != 6) {
+        value = *src_ptr;
+    }
+    else if (src_index == 6) {
+        // OR A, (HL)
+        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
+        value = bus_read(gb, hl_addr);
+    }
+    else {
+        printf("Error en OR A, r con opcode: 0x%02X\n", opcode);
+        exit(1);
+    }
+
+    // 4 Realizamos la operación OR
+    gb->cpu.A |= value;
+
+    // 5. Actualizamos los flags
+    gb->cpu.F = 0; // OR borra todos los flags
+    gb->cpu.F |= CHECK_ZERO(gb->cpu.A);
+}
+
+// Resto de instrucciones
