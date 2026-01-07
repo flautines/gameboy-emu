@@ -8,6 +8,15 @@
 #define CPU_F_H  0x20 // Half Carry Flag
 #define CPU_F_C  0x10 // Carry Flag
 
+// Helper para el Flag Z (Zero)
+#define CHECK_ZERO(value) ((value) == 0 ? CPU_F_Z : 0)
+
+// Helpers para Half Carry
+#define CHECK_HALF_CARRY_ADD(a, b) ((((a) & 0x0F) + ((b) & 0x0F)) > 0x0F ? CPU_F_H : 0)
+#define CHECK_HALF_CARRY_SUB(a, b) ((((a) & 0x0F) < ((b) & 0x0F)) ? CPU_F_H : 0)
+#define CHECK_CARRY_ADD(a, b) (((u16)(a) + (u16)(b)) > 0xFF ? CPU_F_C : 0)
+#define CHECK_CARRY_SUB(a, b) ((a) < (b) ? CPU_F_C : 0)
+
 typedef struct {
     // Registros de la CPU
     u8 A;  // Acumulador
