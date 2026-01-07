@@ -310,6 +310,22 @@ void write_register_pair(Cpu* cpu, int index, u16 value) {
     }
 }
 
+// Helper: Lee un valor de 16 bits del par de registros dado
+// index: 0=BC, 1=DE, 2=HL, 3=SP
+u16 read_register_pair(Cpu* cpu, int index) {
+    switch (index) {
+        case 0: // BC
+            return ((u16)cpu->B << 8) | cpu->C;
+        case 1: // DE
+            return ((u16)cpu->D << 8) | cpu->E;
+        case 2: // HL
+            return ((u16)cpu->H << 8) | cpu->L;
+        case 3: // SP
+            return cpu->SP;
+    }
+    return 0; // Indicador de error
+}
+
 // Función NOP (No Operation)
 void op_nop(GameBoy* gb) {
     // No hace nada
@@ -719,6 +735,23 @@ void op_or_a_r(GameBoy* gb) {
     // 5. Actualizamos los flags
     gb->cpu.F = 0; // OR borra todos los flags
     gb->cpu.F |= CHECK_ZERO(gb->cpu.A);
+}
+
+// INC rr: Incrementa par de registros
+void op_inc_rr(GameBoy* gb) {
+    // Implementación de la instrucción INC rr
+    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+
+    // 2. Extraemos el índice del par de registros
+    // Formato del opcode: 00 rr 0011
+    int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
+    u16 value = (read_register_pair(&gb->cpu, reg_pair_index) + 1) & 0xFFFF;
+
+    // 3. Incrementamos el valor del par de registros
+    write_register_pair(&gb->cpu, reg_pair_index, value);
+
+    // INC rr no afecta a los flags
 }
 
 // Resto de instrucciones
