@@ -1,28 +1,6 @@
 #include <stdio.h>
 #include "gb.h" // Incluir solo gb.h nos da acceso a todo
 
-// Función auxiliar que muestra el estado de la CPU
-void print_cpu_state(const Cpu* cpu) {
-    printf("Estado de la CPU:\n");
-    printf("A: 0x%02X ", cpu->A);
-    printf("B: 0x%02X C: 0x%02X ", cpu->B, cpu->C);
-    printf("D: 0x%02X E: 0x%02X ", cpu->D, cpu->E);
-    printf("H: 0x%02X L: 0x%02X\n", cpu->H, cpu->L);
-
-    printf("SP: 0x%04X ", cpu->SP);
-    printf("PC: 0x%04X ", cpu->PC);
-
-    // Mostrar flags de Z, N, H, C por separado
-    printf("%c %c %c %c\n",
-           (cpu->F & CPU_F_Z) ? 'Z' : '.',
-           (cpu->F & CPU_F_N) ? 'N' : '.',
-           (cpu->F & CPU_F_H) ? 'H' : '.',
-           (cpu->F & CPU_F_C) ? 'C' : '.');
-
-    printf("IME: %d ", cpu->ime);
-    printf("Halted: %d\n", cpu->halted);
-}
-
 int main(void) {
     printf("--- INCIANDO TEST DE ARQUITECTURA GAMEBOY ---\n");
 
@@ -36,14 +14,35 @@ int main(void) {
 
     // Ejecutamos un ciclo
     cpu_step(&gb);
-    printf("\n[TEST] Despues de ejecutar NOP: PC: 0x%04X\n", gb.cpu.PC);
 
     // Como aún no disponemos de función para cargar cartucho, asignamos el PC
     // a WRAM para pruebas de instrucciones
     gb.cpu.PC = 0xC001; // Dirección en WRAM
-    print_cpu_state(&gb.cpu);
 
-    // Test INC BC, INC DE, INC HL, INC SP
+    // Test de opciones PUSH y POP
+    // Cargamos instrucciones en memoria
+    bus_write(&gb, 0xC001, 0xE5); // PUSH BC
+    bus_write(&gb, 0xC002, 0xD5); // PUSH DE
+    bus_write(&gb, 0xC003, 0xC5); // PUSH HL
+    bus_write(&gb, 0xC004, 0xF5); // PUSH AF
+
+    // INC r para ver cambios antes de POP
+    bus_write(&gb, 0xC005, 0x04); // INC B
+    bus_write(&gb, 0xC006, 0x14); // INC D
+    bus_write(&gb, 0xC007, 0x24); // INC H
+    bus_write(&gb, 0xC008, 0x3C); // INC A
+
+    bus_write(&gb, 0xC009, 0xF1); // POP AF
+    bus_write(&gb, 0xC00A, 0xC1); // POP HL
+    bus_write(&gb, 0xC00B, 0xD1); // POP DE
+    bus_write(&gb, 0xC00C, 0xE1); // POP BC
+    
+    
+
+    printf("-------------- [TEST] PUSH/POP rr ---------------------\n");
+    for (int i = 0; i < 12; i++) {
+        cpu_step(&gb);
+    }
     
     printf("\n--- TEST FINALIZADO CON ÉXITO ---\n");
     return 0;

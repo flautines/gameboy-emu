@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -std=c99 -Iinclude -pedantic
 # -g3: Incluye información cmpleta pra el depurador GDB
 
 ifdef DEBUG
-	CFLAGS += -g3 -Og -DDEBUG
+	CFLAGS += -g3 -Og -DDEBUG -Werror
 else
 	CFLAGS += -O3 -DNDEBUG
 endif
