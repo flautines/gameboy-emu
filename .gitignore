@@ -4,3 +4,6 @@
 
 # Descarta el ejecutable
 /gameboy-emu
+
+# Descarta fichero workspace
+/gameboy-emu.code-workspace
