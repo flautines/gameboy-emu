@@ -197,8 +197,8 @@ Instruction instruction_set[256] = {
     [0x8B] = { .func = op_adc_a_r, .name = "ADC A,E", .cycles = 1, .length = 1 },
     [0x8C] = { .func = op_adc_a_r, .name = "ADC A,H", .cycles = 1, .length = 1 },
     [0x8D] = { .func = op_adc_a_r, .name= "ADC A,L", .cycles= 1, .length= 1 },
-    [0x8E] = { .func= op_adc_a_r, .name= "ADC A,(HL)",.cycles=2,.length=1},
-    [0x8F] = { .func=op_adc_a_r, .name="ADC A,A",.cycles=1,.length=1},
+    [0x8E] = { .func= op_adc_a_r, .name= "ADC A,(HL)",.cycles=2,.length=1 },
+    [0x8F] = { .func= op_adc_a_r, .name= "ADC A,A", .cycles=1,.length=1 },
     [0x90] = { .func = op_sub_a_r, .name = "SUB B", .cycles = 1, .length = 1 },
     [0x91] = { .func = op_sub_a_r, .name = "SUB C", .cycles = 1, .length = 1 },
     [0x92] = { .func = op_sub_a_r, .name = "SUB D", .cycles = 1, .length = 1 },
@@ -247,7 +247,7 @@ Instruction instruction_set[256] = {
     [0xBD] = { .func = op_cp_a_r, .name = "CP L", .cycles = 1, .length = 1 },
     [0xBE] = { .func = op_cp_a_r, .name = "CP (HL)", .cycles = 2, .length = 1 },
     [0xBF] = { .func = op_cp_a_r, .name = "CP A", .cycles = 1, .length = 1 },
-    [0xC0] = { .func = NULL, .name = "RET NZ", .cycles = 2, .length = 1 },
+    [0xC0] = { .func = op_ret_cc, .name = "RET NZ", .cycles = 2, .length = 1 },
     [0xC1] = { .func = op_pop_rr, .name = "POP BC", .cycles = 3, .length = 1 },
     [0xC2] = { .func = op_jp_cc_nn, .name = "JP NZ,a16", .cycles = 3, .length = 3 },
     [0xC3] = { .func = op_jp_nn, .name = "JP a16", .cycles = 4, .length = 3 },
@@ -255,15 +255,15 @@ Instruction instruction_set[256] = {
     [0xC5] = { .func = op_push_rr, .name = "PUSH BC", .cycles = 4, .length = 1 },
     [0xC6] = { .func = op_add_a_d8, .name = "ADD A,d8", .cycles = 2, .length = 2 },
     [0xC7] = { .func = NULL, .name = "RST 00H", .cycles = 4, .length = 1 },
-    [0xC8] = { .func = NULL, .name = "RET Z", .cycles = 2, .length = 1 },
-    [0xC9] = { .func = NULL, .name = "RET", .cycles = 4, .length = 1 },
+    [0xC8] = { .func = op_ret_cc, .name = "RET Z", .cycles = 2, .length = 1 },
+    [0xC9] = { .func = op_ret, .name = "RET", .cycles = 4, .length = 1 },
     [0xCA] = { .func = op_jp_cc_nn, .name = "JP Z,a16", .cycles = 3, .length = 3 },
     [0xCB] = { .func = NULL, .name = "PREFIX CB", .cycles = 0, .length = 1 },
     [0xCC] = { .func = op_call_cc_nn, .name = "CALL Z,a16", .cycles = 3, .length = 3 },
     [0xCD] = { .func = op_call_nn, .name = "CALL a16", .cycles = 6, .length = 3 },
     [0xCE] = { .func = op_adc_a_d8, .name = "ADC A,d8", .cycles = 2, .length = 2 },
     [0xCF] = { .func = NULL, .name = "RST 08H", .cycles = 4, .length = 1 },
-    [0xD0] = { .func = NULL, .name = "RET NC", .cycles = 2, .length = 1 },
+    [0xD0] = { .func = op_ret_cc, .name = "RET NC", .cycles = 2, .length = 1 },
     [0xD1] = { .func = op_pop_rr, .name = "POP DE", .cycles = 3, .length = 1 },
     [0xD2] = { .func = op_jp_cc_nn, .name = "JP NC,a16", .cycles = 3, .length = 3 },
     [0xD3] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
@@ -271,8 +271,8 @@ Instruction instruction_set[256] = {
     [0xD5] = { .func = op_push_rr, .name = "PUSH DE", .cycles = 4, .length = 1 },
     [0xD6] = { .func = op_sub_a_d8, .name = "SUB d8", .cycles = 2, .length = 2 },
     [0xD7] = { .func = NULL, .name = "RST 10H", .cycles = 4, .length = 1 },
-    [0xD8] = { .func = NULL, .name = "RET C", .cycles = 2, .length = 1 },
-    [0xD9] = { .func = NULL, .name = "RETI", .cycles = 4, .length = 1 },
+    [0xD8] = { .func = op_ret_cc, .name = "RET C", .cycles = 2, .length = 1 },
+    [0xD9] = { .func = op_reti, .name = "RETI", .cycles = 4, .length = 1 },
     [0xDA] = { .func = op_jp_cc_nn, .name = "JP C,a16", .cycles = 3, .length = 3 },
     [0xDB] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xDC] = { .func = op_call_cc_nn, .name = "CALL C,a16", .cycles = 3, .length = 3 },
@@ -1259,4 +1259,54 @@ void op_call_cc_nn(GameBoy* gb) {
         gb->cpu.PC = target_adddr;
         gb->cpu.cycles += 3; // Coste extra si se toma el salto
     }
+}
+
+// ------------------------- RET ----------------------------------
+// Helper para restaurar el PC de la pila
+
+// RET 
+// Opcode: 0xC9
+void op_ret(GameBoy* gb) {
+    // Byte bajo primero, byte alto después
+    u8 lo = bus_read(gb, gb->cpu.SP);
+    gb->cpu.SP++;
+
+    u8 hi = bus_read(gb, gb->cpu.SP);
+    gb->cpu.SP++;
+
+    // 2. Actualizar PC
+    gb->cpu.PC = (hi << 8) | lo;
+}
+
+// RET cc (Condicional)
+// Opcodes: 0xC0, 0xC8, 0xD0, 0xD8
+void op_ret_cc(GameBoy* gb) {
+    // 1. Decodificamos la condición (bits 3 y 4)
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    int cond = (opcode >> 3) & 0x03;
+
+    // 2. Verificamos si se cumple
+    if (check_condition(gb, cond)) {
+        // Hacemos exactamente RET
+        op_ret(gb);
+
+        // SUMAMOS LA PENALIZACIÓN
+        // Ciclos totales necesarios: 5.
+        // Base en tabla: 2.
+        // Extra a sumar: 3.
+        gb->cpu.cycles += 3;
+    }
+    
+    // Si la condición es falsa, no hacemos nada.
+    // El PC simplemente sigue en la instrucción siguiente al RET.
+}
+
+// RETI (Return from interrupt)
+// Opcode 0xD9
+void op_reti(GameBoy* gb) {
+    // 1. Exactamente igual que RET
+    op_ret(gb);
+
+    // 2. Habilitar Interrupciones Maestras
+    gb->cpu.ime = true;
 }
