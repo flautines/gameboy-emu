@@ -19,9 +19,6 @@ typedef struct {
     // Registros de Hardware (IO)
     u8 io[0x80]; // $FF00 - $FF7F
 
-    // El registro IE está en $FFFF
-    u8 ie_register;
-
     // ... Punteros al Cartucho (Lo veremos luego)
 } Bus;
 

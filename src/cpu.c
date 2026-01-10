@@ -317,22 +317,32 @@ Instruction instruction_set[256] = {
     
 };
 
+// Helpers para leer/escribir pares de registros
+// Nota: GameBoy es Little Endian, pero los registros pares se leen High-Low.
+// BC -> B es el byte alto, C es el byte bajo.
+static inline u16 get_bc(Cpu* cpu) { return (cpu->b << 8) | cpu->c; }
+static inline void set_bc(Cpu* cpu, u16 value) { cpu->b = (value >> 8) & 0xFF; cpu->c = value & 0xFF; }
+static inline u16 get_de(Cpu* cpu) { return (cpu->d << 8) | cpu->e; }
+static inline void set_de(Cpu* cpu, u16 value) { cpu->d = (value >> 8) & 0xFF; cpu->e = value & 0xFF; }
+static inline u16 get_hl(Cpu* cpu) { return (cpu->h << 8) | cpu->l; }
+static inline void set_hl(Cpu* cpu, u16 value) { cpu->h = (value >> 8) & 0xFF; cpu->l = value & 0xFF; }
+
 // Función auxiliar que muestra el estado de la CPU
 void print_cpu_state(const Cpu* cpu) {
-    printf("AF 0x%02X%02X ", cpu->A, cpu->F);
-    printf("BC 0x%02X%02X ", cpu->B, cpu->C);
-    printf("DE 0x%02X%02X ", cpu->D, cpu->E);
-    printf("HL 0x%02X%02X ", cpu->H, cpu->L);
+    printf("AF 0x%02X%02X ", cpu->a, cpu->f);
+    printf("BC 0x%02X%02X ", cpu->b, cpu->c);
+    printf("DE 0x%02X%02X ", cpu->d, cpu->e);
+    printf("HL 0x%02X%02X ", cpu->h, cpu->l);
 
-    printf("SP: 0x%04X ", cpu->SP);
-    printf("PC: 0x%04X ", cpu->PC);
+    printf("SP: 0x%04X ", cpu->sp);
+    printf("PC: 0x%04X ", cpu->pc);
 
     // Mostrar flags de Z, N, H, C por separado
     printf("%c %c %c %c\t",
-           (cpu->F & FLAG_Z) ? 'Z' : '.',
-           (cpu->F & FLAG_N) ? 'N' : '.',
-           (cpu->F & FLAG_H) ? 'H' : '.',
-           (cpu->F & FLAG_C) ? 'C' : '.');
+           (cpu->f & FLAG_Z) ? 'Z' : '.',
+           (cpu->f & FLAG_N) ? 'N' : '.',
+           (cpu->f & FLAG_H) ? 'H' : '.',
+           (cpu->f & FLAG_C) ? 'C' : '.');
 
     printf("IME: %d ", cpu->ime);
     printf("Halted: %d\n", cpu->halted);
@@ -341,18 +351,18 @@ void print_cpu_state(const Cpu* cpu) {
 // Inicializa la CPU a su estado por defecto
 void cpu_init(Cpu* cpu) {
     // Estado post-boot ROM
-    cpu->PC = 0x0100; // Punto de entrada de los cartuchos
-    cpu->SP = 0xFFFE; // Puntero de pila inicial
+    cpu->pc = 0x0100; // Punto de entrada de los cartuchos
+    cpu->sp = 0xFFFE; // Puntero de pila inicial
 
     // Valores iniciales de los registros tras el boot ROM
-    cpu->A = 0x01;
-    cpu->F = 0xB0;
-    cpu->B = 0x00;
-    cpu->C = 0x13;
-    cpu->D = 0x00;
-    cpu->E = 0xD8;
-    cpu->H = 0x01;
-    cpu->L = 0x4D;
+    cpu->a = 0x01;
+    cpu->f = 0xB0;
+    cpu->b = 0x00;
+    cpu->c = 0x13;
+    cpu->d = 0x00;
+    cpu->e = 0xD8;
+    cpu->h = 0x01;
+    cpu->l = 0x4D;
 
     // Estado interno
     cpu->ime = false;    // Interrupts deshabilitados
@@ -361,30 +371,48 @@ void cpu_init(Cpu* cpu) {
 
 // Retorna el número de M-Cycles consumidos por la instrucción ejecutada
 int cpu_step(GameBoy* gb) {
-    // 1. Obtenemos el PC actual y el opcode
-    u8 opcode = bus_read(gb, gb->cpu.PC);
+    // Si estamos en HALT, no ejecutamos nada, solo consumimos tiempo
+    if (gb->cpu.halted) {
+        // CPU dormida, consume 1 M-Cycle por paso
+        return 1;
+    }
 
-    // 2. Buscamos la instrución en la tabla
+    // --- MANEJO DEL HALT BUG ---
+    u16 pc_actual = gb->cpu.pc;
+ 
+    // Obtenemos el PC actual y el opcode
+    u8 opcode = bus_read(gb, pc_actual);
+
+    // Si el bug ocurrió en la instrucción anterior:
+    if (gb->cpu.halt_bug) {
+        // NO incrementamos el PC.
+        // El opcode se ejecuta, pero PC sigue apuntando al mismo sitio.
+        // Esto causará que el siguiente byte se lea "dos veces" (o corrupto).
+        gb->cpu.halt_bug = false;
+    } 
+    else {
+        // Comportamiento normal: PC avanza
+        gb->cpu.pc++; 
+    }
+
+    // Buscamos la instrución en la tabla
     const Instruction* instr = &instruction_set[opcode];
 
-    // 3. Avanzamos PC (consumimos el opcode)
-    gb->cpu.PC++; 
-
-    // 4. Inicializamos los cilos con el valor BASE de la tabla
+    // Inicializamos los cilos con el valor BASE de la tabla
     // Si la instrucción es condicional, la función sumará el extra de cilos
     // a esta variable.
     gb->cpu.cycles = instr->cycles;
 
-    // 5. Ejecutamos la instrucción
+    // 6. Ejecutamos la instrucción
     if (instr->func) {
         // Debug: Imprimir la instrucción que se va a ejecutar
-        printf("0x%04X: %s (0x%02X)\n", gb->cpu.PC, instr->name, opcode);
+        printf("0x%04X: %s (0x%02X)\n", gb->cpu.pc, instr->name, opcode);
         instr->func(gb);
         // Debug: Imprimir el estado de la CPU después de la instrucción
         print_cpu_state(&gb->cpu);
     } else {
         // Instrucción no implementada
-        printf("Instrucción no implementada: %s (0x%02X) en PC:0x%04X\n", instr->name, opcode, gb->cpu.PC);
+        printf("Instrucción no implementada: %s (0x%02X) en PC:0x%04X\n", instr->name, opcode, gb->cpu.pc);
         exit(1);
     }
 
@@ -392,17 +420,45 @@ int cpu_step(GameBoy* gb) {
     return gb->cpu.cycles;
 }
 
+// Los dispositivos usarán esta función para solicitar una interrupción
+void cpu_request_interrupt(GameBoy* gb, u8 type) {
+    // Activamos el bit correspondiente en IF
+    gb->cpu.if_reg |= type;
+
+    // Si la CPU estaba dormida (HALT), ¡despierta!
+    // Nota: Esto es independiente de IME o IE. Un HALT siempre se rompe
+    // si ocurre una interrupción, aunque luego no se ejecute si está bloqueada.
+    gb->cpu.halted = false;
+}
+
+// TODO: Esta función todavía no gestiona toda la lógica de interrupciones
+// solo hace las acciones para gestionar el flag halted.
+void handle_interrupts(GameBoy* gb) {
+    // Si hay alguna interrupción pendiente (IF) y habilitada (IE)
+    if (gb->cpu.ie & gb->cpu.if_reg & 0x1F) {
+
+        // ¡DESPIERTA!
+        // Esto saca a la CPU del bucle de HALT
+        gb->cpu.halted = false;
+
+        // Solo saltamos al vector (0x40, 0x48...) si IME está activo
+        if (gb->cpu.ime) {
+            // TODO: ... lógica de saltar al vector de interrupción ...
+        }
+    }
+}
+
 // Helper para obtener punteros a registros según el índice (0-7)
 u8* get_register_ptr(Cpu* cpu, int index) {
     switch (index) {
-        case 0: return &cpu->B;
-        case 1: return &cpu->C;
-        case 2: return &cpu->D;
-        case 3: return &cpu->E;
-        case 4: return &cpu->H;
-        case 5: return &cpu->L;
+        case 0: return &cpu->b;
+        case 1: return &cpu->c;
+        case 2: return &cpu->d;
+        case 3: return &cpu->e;
+        case 4: return &cpu->h;
+        case 5: return &cpu->l;
         case 6: return NULL; // No hay registro HL
-        case 7: return &cpu->A;
+        case 7: return &cpu->a;
     }
     return NULL; // Indicador de error
 }
@@ -412,19 +468,19 @@ u8* get_register_ptr(Cpu* cpu, int index) {
 void write_register_pair(Cpu* cpu, int index, u16 value) {
     switch (index) {
         case 0: // BC
-            cpu->B = (value >> 8) & 0xFF;
-            cpu->C = value & 0xFF;
+            cpu->b = (value >> 8) & 0xFF;
+            cpu->c = value & 0xFF;
             break;
         case 1: // DE
-            cpu->D = (value >> 8) & 0xFF;
-            cpu->E = value & 0xFF;
+            cpu->d = (value >> 8) & 0xFF;
+            cpu->e = value & 0xFF;
             break;
         case 2: // HL
-            cpu->H = (value >> 8) & 0xFF;
-            cpu->L = value & 0xFF;
+            cpu->h = (value >> 8) & 0xFF;
+            cpu->l = value & 0xFF;
             break;
         case 3: // SP
-            cpu->SP = value;
+            cpu->sp = value;
             break;
     }
 }
@@ -434,13 +490,13 @@ void write_register_pair(Cpu* cpu, int index, u16 value) {
 u16 get_register_pair(Cpu* cpu, int index) {
     switch (index) {
         case 0: // BC
-            return ((u16)cpu->B << 8) | cpu->C;
+            return ((u16)cpu->b << 8) | cpu->c;
         case 1: // DE
-            return ((u16)cpu->D << 8) | cpu->E;
+            return ((u16)cpu->d << 8) | cpu->e;
         case 2: // HL
-            return ((u16)cpu->H << 8) | cpu->L;
+            return ((u16)cpu->h << 8) | cpu->l;
         case 3: // SP
-            return cpu->SP;
+            return cpu->sp;
     }
     return 0; // Indicador de error
 }
@@ -471,7 +527,7 @@ void op_nop(GameBoy* gb) {
 //    111 - A
 void op_ld_r_r(GameBoy* gb) {
     // 1. Recuperamos opcode
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
 
     // 2. Extraemos índices (LD dst, src)
     // Patrón: 01 ddd sss
@@ -506,15 +562,15 @@ void op_ld_r_r(GameBoy* gb) {
 // ---------------- LD r, d8 -------------------------------
 void op_ld_r_d8(GameBoy* gb) {
     // 1. Recuperamos el opcode 
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
 
     // 2. Extraemos destino (Bits 3-5)
     // Patrón: 00 rrr 110
     u8 reg_idx = (opcode >> 3) & 0x07;
 
     // 3. Leemos el valor inmediato (d8)
-    u8 val = bus_read(gb, gb->cpu.PC);
-    gb->cpu.PC++; // ¡Buena práctica! Avanzar el PC justo después de leer
+    u8 val = bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++; // ¡Buena práctica! Avanzar el PC justo después de leer
 
     // 4. Escribimos el valor inmediato en  destino
     if (reg_idx == 6) { 
@@ -537,19 +593,19 @@ void op_ld_r_d8(GameBoy* gb) {
 // ----------------- LD rr, d16 ----------------------------
 void op_ld_rr_d16(GameBoy* gb) {
     // 1. Decodificación (PC apunta al byte siguiente al opcode)
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
 
     // Bits 4-5: Índice del par (0=BC, 1=DE, 2=HL, 3=SP)
     int reg_pair_index = (opcode >> 4) & 0x03;
 
     // 2. Lectura de 16 bits
-    u16 value = bus_read16(gb, gb->cpu.PC);
+    u16 value = bus_read16(gb, gb->cpu.pc);
 
     // 3. Escritura en registro
     write_register_pair(&gb->cpu, reg_pair_index, value);
 
     // 4. Avance del PC
-    gb->cpu.PC += 2;
+    gb->cpu.pc += 2;
 }
 
 // ------------------- LD (rr), A ----------------------------------
@@ -557,7 +613,7 @@ void op_ld_rr_d16(GameBoy* gb) {
 // Opcodes: 0x02, 0x12, 0x22, 0x32
 void op_ld_addr_rr_a(GameBoy* gb) {
     // 1. Recuperamos opcode
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
 
     // 2. Extraemos el índice (Bits 4-5)
     RegisterPairIndex idx = (RegisterPairIndex)((opcode >> 4) & 0x03);
@@ -594,7 +650,7 @@ void op_ld_addr_rr_a(GameBoy* gb) {
     }
 
     // 4. Escribimos A en memoria
-    bus_write(gb, addr, gb->cpu.A);
+    bus_write(gb, addr, gb->cpu.a);
 }
  
 // ------------------- LD A, (rr) ----------------------------------
@@ -602,7 +658,7 @@ void op_ld_addr_rr_a(GameBoy* gb) {
 // Opcodes: 0x0A, 0x1A, 0x2A, 0x3A
 void op_ld_a_addr_rr(GameBoy* gb) {
     // 1. Recuperamos el opcode
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
 
     // 2. Extraemos el índice del par (Bits 4-5)
     RegisterPairIndex idx = (RegisterPairIndex)((opcode >> 4) & 0x03);
@@ -640,17 +696,47 @@ void op_ld_a_addr_rr(GameBoy* gb) {
     }
 
     // 4. Lectura de memoria hacia el registro A
-    gb->cpu.A = bus_read(gb, addr);
+    gb->cpu.a = bus_read(gb, addr);
 }
 
+// ------------------- HALT ----------------------------------------
+// La GameBoy original (DMG) tenía un bug: 
+// Si se ejecuta HALT cuando:
+//  1. Las interrupciones maestras están desactivadas (IME = 0)
+//  2. PERO hay interrupciones pendientes habilitadas ( IE & IF & 0x1F != 0)
+//
+// El resultado: La CPU NO se detiene, pero debido a un fallo en el circuito de pre-fetch,
+// la siguiente instrucción SE LEE DOS VECES.
+// Muchos juegos (como The Legend of Zelda: Link's Awekening) usan este truco.
 void op_halt(GameBoy* gb) {
-    gb->cpu.halted = true;
+    // Obtenemos las interrupciones pendientes que también están habilitadas
+    u8 pending_interrupts = gb->cpu.ie & gb->cpu.if_reg & 0x1F;
+
+    if (gb->cpu.ime) {
+        // CASO NORMAL A: IME activado.
+        // La CPU se duerme esperando una interrupción.
+        gb->cpu.halted = true;
+    }
+    else {
+        if (pending_interrupts == 0) {
+            // CASO NORMAL B: IME desactivado y sin interrupciones pendientes.
+            // La CPU se duerme, pero no saltará al vector de interrupción al despertar
+            // (simplemente continuará ejecución en la siguiente línea).
+            gb->cpu.halted = true;
+        }
+        else {
+            // CASO HALT BUG: IME desactivado PERO hay interrupciones pendientes.
+            // La CPU NO se duerme (halted = false).
+            // Y ocurre el glitch: el PC falla al incrementar en la siguiente lectura.
+            gb->cpu.halt_bug = true;
+        }
+    }
 }
 
 // -------------------------- INC r -------------------------
 void op_inc_r(GameBoy* gb) {
     // 1. Decodificar registro (3-5)
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     u8 reg_idx = (opcode >> 3) & 0x07;
 
     // 2. Obtener el valor actual
@@ -658,7 +744,7 @@ void op_inc_r(GameBoy* gb) {
     u8* reg_ptr = NULL;
 
     if (reg_idx == 6) { // INC (HL)
-        u16 addr = (gb->cpu.H << 8)| gb->cpu.L;
+        u16 addr = (gb->cpu.h << 8)| gb->cpu.l;
         val = bus_read(gb, addr);
     }
     else {
@@ -671,10 +757,10 @@ void op_inc_r(GameBoy* gb) {
 
     // 4. GESTION DE FLAGS
     // Mantenemos Carry y borramos el resto de flags
-    gb->cpu.F = (gb->cpu.F & FLAG_C);
+    gb->cpu.f = (gb->cpu.f & FLAG_C);
 
     // Flag Z
-    gb->cpu.F |= CHECK_ZERO(result);
+    gb->cpu.f |= CHECK_ZERO(result);
 
     // Flag N: Siempre 0 en INC
     // (No hace falta hacer nada para este flag)
@@ -682,7 +768,7 @@ void op_inc_r(GameBoy* gb) {
     // Flag H: Half Carry
     // Ocurre si pasamos de xxx1111 a xx10000.
     // Es decir, si los 4 bits bajos vaían 15 (0xF)
-    gb->cpu.F |= ((val & 0x0F) == 0x0F) ? FLAG_H : 0;
+    gb->cpu.f |= ((val & 0x0F) == 0x0F) ? FLAG_H : 0;
 
     // 5. Escribir el resultado
     if (reg_idx == 6) {
@@ -698,7 +784,7 @@ void op_inc_r(GameBoy* gb) {
 void op_dec_r(GameBoy* gb) {
     // 1. Decodificamos el registro objetivo (Bits 3-5)
     // Formato del opcode: 00 rrr 101
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     int reg_idx = (opcode >> 3) & 0x07;
     
     // 2. Obtenemos el valor actual (target)
@@ -721,16 +807,16 @@ void op_dec_r(GameBoy* gb) {
 
     // 4. GESTIÓN DE FLAGS (¡Cuidado aquí!)
     // Conservamos el flag de C, borramos los otros 3
-    gb->cpu.F = gb->cpu.F & FLAG_C;
+    gb->cpu.f = gb->cpu.f & FLAG_C;
     
     // Flag Z: Si el resultado es 0
-    gb->cpu.F |= CHECK_ZERO(result);
+    gb->cpu.f |= CHECK_ZERO(result);
 
     // Flag N: Siempre 1 (es una resta)
-    gb->cpu.F |= FLAG_N;
+    gb->cpu.f |= FLAG_N;
 
     // Flag H: Half Carry
-    gb->cpu.F |= ((val & 0x0F) == 0) ? FLAG_H : 0;
+    gb->cpu.f |= ((val & 0x0F) == 0) ? FLAG_H : 0;
     
     // 5. Escribimos el resultado
     if (reg_idx == 6) {
@@ -745,7 +831,7 @@ void op_dec_r(GameBoy* gb) {
 // INC y DEC de pares de registros de 16 bits
 void op_inc_dec_rr(GameBoy* gb) {
     // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
 
     // 2. Extraemos el índice del par de registros
     // Formato del opcode: 
@@ -762,24 +848,24 @@ void op_inc_dec_rr(GameBoy* gb) {
 // Helper interno: Calcula flags para ADD y ADC
 // Sirve para ADD (carry_in=0) y ADC (carry_in=flag_C)
 static void set_add_adc_flags(GameBoy* gb, u8 val, u8 carry_in) {
-    u8 a = gb->cpu.A;
+    u8 a = gb->cpu.a;
     // Usamos int (o u16) para capturar el resultado completo (más de 255)
     int result = a + val + carry_in;
 
     // Lipiamos flags (ADD/ADC siempre ponen N a 0)
-    gb->cpu.F = 0;
+    gb->cpu.f = 0;
 
     // 1. Zero Flag (Z)
-    gb->cpu.F |= CHECK_ZERO(result);
+    gb->cpu.f |= CHECK_ZERO(result);
 
     // 2. Substract Flag (N)
     // Siempre es 0 en sumas. (Ya lo hicimos al limpiar F)
 
     // 3. Half Carry (H)
-    gb->cpu.F |= CHECK_HALF_CARRY_ADD(a, val, carry_in);
+    gb->cpu.f |= CHECK_HALF_CARRY_ADD(a, val, carry_in);
 
     // 4. Carry Flag
-    gb->cpu.F |= CHECK_CARRY_ADD(result);
+    gb->cpu.f |= CHECK_CARRY_ADD(result);
 }
 
 // ------------------------ ADD ----------------------
@@ -787,7 +873,7 @@ static void set_add_adc_flags(GameBoy* gb, u8 val, u8 carry_in) {
 // ADD A, r (Opcodes 0x80 - 0x87)
 void op_add_a_r(GameBoy* gb) {
     // 1. Decodificar el registro origen
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     u8 reg_idx = opcode & 0x07; // Bits 0-2
     u8 val;
 
@@ -803,27 +889,27 @@ void op_add_a_r(GameBoy* gb) {
     set_add_adc_flags(gb, val, 0);
 
     // 3. Ejecutar suma
-    gb->cpu.A += val;
+    gb->cpu.a += val;
 }
 
 // ADD A, d8 (Opcode 0xC6)
 void op_add_a_d8(GameBoy* gb) {
     // 1. Leer inmediato
-    u8 val = bus_read(gb, gb->cpu.PC);
-    gb->cpu.PC++; // Avanzar PC por el dato leído
+    u8 val = bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++; // Avanzar PC por el dato leído
 
     // 2. Calcular flags
     set_add_adc_flags(gb, val, 0);
 
     // 3. Ejecutar suma
-    gb->cpu.A += val;
+    gb->cpu.a += val;
 }
 
 // ------------------------ ADC ----------------------
 
 // ADC A, r (Opcodes 0x88 - 0x8F)
 void op_adc_a_r(GameBoy* gb) {
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     u8 reg_idx = opcode & 0x07;
     u8 val;
 
@@ -836,51 +922,51 @@ void op_adc_a_r(GameBoy* gb) {
     }
 
     // Extraer Carry actual (0 o 1)
-    u8 carry = (gb->cpu.F & FLAG_C) ? 1 : 0;
+    u8 carry = (gb->cpu.f & FLAG_C) ? 1 : 0;
 
     // Calcular flags CON carry
     set_add_adc_flags(gb, val, carry);
 
     // Ejecutar suma completa
-    gb->cpu.A += val + carry;
+    gb->cpu.a += val + carry;
  }
 
  // ADC A, d8 (Opcode CE)
  void op_adc_a_d8(GameBoy* gb) {
-    u8 val = bus_read(gb, gb->cpu.PC - 1);
-    gb->cpu.PC++;
+    u8 val = bus_read(gb, gb->cpu.pc - 1);
+    gb->cpu.pc++;
 
-    u8 carry = (gb->cpu.F & FLAG_C) ? 1 : 0;
+    u8 carry = (gb->cpu.f & FLAG_C) ? 1 : 0;
 
     set_add_adc_flags(gb, val, carry);
 
-    gb->cpu.A += val + carry;
+    gb->cpu.a += val + carry;
  }
 
 // Helper interno: Calcula y actualiza flags para una resta (A - val - carry)
 // Sirve para SUB (carry_in=0), CP (carry_in=0) y SBC (carry_in=flag_C)
 static void set_sub_sbc_flags(GameBoy* gb, u8 val, u8 carry_in) {
-    u8 a = gb->cpu.A;
+    u8 a = gb->cpu.a;
     // Usamos int para capturar resultados negativos sin overflow
     int result = a - val - carry_in;
 
-    gb->cpu.F = FLAG_N; // N siempre es 1 en restas
+    gb->cpu.f = FLAG_N; // N siempre es 1 en restas
 
     // 1. Zero Flag
-    gb->cpu.F |= CHECK_ZERO(result);
+    gb->cpu.f |= CHECK_ZERO(result);
     
     // 2. Half Carry (H)
-    gb->cpu.F |= CHECK_HALF_CARRY_SUB(gb->cpu.A, result, carry_in);
+    gb->cpu.f |= CHECK_HALF_CARRY_SUB(gb->cpu.a, result, carry_in);
 
     // 3. Carry Flag (C)
-    gb->cpu.F |= CHECK_CARRY_SUB(result);
+    gb->cpu.f |= CHECK_CARRY_SUB(result);
 }
 
 // ------------------------ SUB ----------------------
 // SUB A, r (Opcodes 0x90 - 0x97)
 void op_sub_a_r(GameBoy* gb) {
     // 1. Decodificar registro origen
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     u8 reg_idx = opcode & 0x07; // Bits 2-0
     u8 val;
 
@@ -896,27 +982,27 @@ void op_sub_a_r(GameBoy* gb) {
     set_sub_sbc_flags(gb, val, 0);
 
     // 3. Guardar resultado
-    gb->cpu.A -= val;
+    gb->cpu.a -= val;
 }
 
 // SUB A, d8 (Opcode 0xD6)
 void op_sub_a_d8(GameBoy* gb) {
     // 1. Leer inmediato
-    u8 val = bus_read(gb, gb->cpu.PC);
-    gb->cpu.PC++; // Avanzamos PC por el dato leído
+    u8 val = bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++; // Avanzamos PC por el dato leído
 
     // 2. Calcular flags
     set_sub_sbc_flags(gb, val, 0);
 
     // 3. Guardar resultado
-    gb->cpu.A -= val;
+    gb->cpu.a -= val;
 }
 
 // ------------------------ SBC -----------------------
 
 // SBC A, r (Opcodes 0x90 - 0x9F)
 void op_sbc_a_r(GameBoy* gb) {
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     u8 reg_idx = opcode & 0x07;
     u8 val;
 
@@ -929,30 +1015,30 @@ void op_sbc_a_r(GameBoy* gb) {
     }
 
     // EXTRAEMOS EL CARRY ACTUAL (0 o 1)
-    u8 carry = gb->cpu.F ? 1 : 0;
+    u8 carry = gb->cpu.f ? 1 : 0;
 
     set_sub_sbc_flags(gb, val, carry);
 
     // Actualizamos el registro A con la resta con acarreo
-    gb->cpu.A = gb->cpu.A - val - carry;
+    gb->cpu.a = gb->cpu.a - val - carry;
 }
 
 // SBC A, d8 (Opcode 0xDE)
 void op_sbc_a_d8(GameBoy* gb) {
-    u8 val = bus_read(gb, gb->cpu.PC);
-    gb->cpu.PC++;
+    u8 val = bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++;
 
-    u8 carry = gb->cpu.F ? 1 : 0;
+    u8 carry = gb->cpu.f ? 1 : 0;
 
     set_sub_sbc_flags(gb, val, carry);
-    gb->cpu.A = gb->cpu.A - val - carry;
+    gb->cpu.a = gb->cpu.a - val - carry;
 }
 
 // ------------------------- CP -----------------------
 
 // CP A, r (Opcodes 0xB8 - 0xBF)
 void op_cp_a_r(GameBoy* gb) {
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     u8 reg_idx = opcode & 0x07;
     u8 val;
 
@@ -970,8 +1056,8 @@ void op_cp_a_r(GameBoy* gb) {
 
 // CP A, d8 (Opcode 0xFE)
 void op_cp_a_d8(GameBoy* gb) {
-    u8 val = bus_read(gb, gb->cpu.PC);
-    gb->cpu.PC++;
+    u8 val = bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++;
 
     set_sub_sbc_flags(gb, val, 0);
 }
@@ -979,19 +1065,19 @@ void op_cp_a_d8(GameBoy* gb) {
 // Helper para AND, OR, XOR
 // h_flag: 1 para AND, 0 para OR/XOR
 static void set_logic_op_flags(GameBoy* gb, bool h_flag) {
-    gb->cpu.F = 0; // N=0, C=0 siempre en estas ops
+    gb->cpu.f = 0; // N=0, C=0 siempre en estas ops
 
     // Flag Z: Se calcula sobre el registro A (que ya tiene el resultado)
-    gb->cpu.F |= CHECK_ZERO(gb->cpu.A);
+    gb->cpu.f |= CHECK_ZERO(gb->cpu.a);
 
     // Flag H: Depende de la instrucción
-    gb->cpu.F |= h_flag;
+    gb->cpu.f |= h_flag;
 }
 
 // ------------------------- AND ------------------------
 void op_and_a_r(GameBoy* gb) {
     // 1. Fetch
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     u8 reg_idx = opcode & 0x07;
     u8 val;
 
@@ -1004,24 +1090,24 @@ void op_and_a_r(GameBoy* gb) {
     }
 
     // 2. Operación
-    gb->cpu.A &= val;
+    gb->cpu.a &= val;
 
     // 3. Flags (AND pone H a 1)
     set_logic_op_flags(gb, FLAG_H);
 }
 
 void op_and_a_d8(GameBoy* gb) {
-    u8 val = bus_read(gb, gb->cpu.PC);
-    gb->cpu.PC++;
+    u8 val = bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++;
 
-    gb->cpu.A &= val;
+    gb->cpu.a &= val;
     set_logic_op_flags(gb, FLAG_H);
 }
 
 // ------------------------- OR ------------------------
 void op_or_a_r(GameBoy* gb) {
     // 1. Fetch
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     u8 reg_idx = opcode & 0x07;
     u8 val;
 
@@ -1034,24 +1120,24 @@ void op_or_a_r(GameBoy* gb) {
     }
 
     // 2. Operación
-    gb->cpu.A |= val;
+    gb->cpu.a |= val;
 
     // 3. Flags (AND pone H a 1)
     set_logic_op_flags(gb, 0);
 }
 
 void op_or_a_d8(GameBoy* gb) {
-    u8 val = bus_read(gb, gb->cpu.PC);
-    gb->cpu.PC++;
+    u8 val = bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++;
 
-    gb->cpu.A |= val;
+    gb->cpu.a |= val;
     set_logic_op_flags(gb, 0);
 }
 
 // ------------------------- XOR ------------------------
 void op_xor_a_r(GameBoy* gb) {
     // 1. Fetch
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     u8 reg_idx = opcode & 0x07;
     u8 val;
 
@@ -1064,17 +1150,17 @@ void op_xor_a_r(GameBoy* gb) {
     }
 
     // 2. Operación
-    gb->cpu.A ^= val;
+    gb->cpu.a ^= val;
 
     // 3. Flags (AND pone H a 1)
     set_logic_op_flags(gb, 0);
 }
 
 void op_xor_a_d8(GameBoy* gb) {
-    u8 val = bus_read(gb, gb->cpu.PC);
-    gb->cpu.PC++;
+    u8 val = bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++;
 
-    gb->cpu.A ^= val;
+    gb->cpu.a ^= val;
     set_logic_op_flags(gb, 0);
 }
 
@@ -1082,7 +1168,7 @@ void op_xor_a_d8(GameBoy* gb) {
 void op_inc_rr(GameBoy* gb) {
     // Implementación de la instrucción INC rr
     // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
 
     // 2. Extraemos el índice del par de registros
     // Formato del opcode: 00 rr 0011
@@ -1098,7 +1184,7 @@ void op_inc_rr(GameBoy* gb) {
 // --------------------- PUSH rr -------------------------
 void op_push_rr(GameBoy* gb) {
     // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
 
     // Bits 4-5 determinan el par: 00=BC, 01=DE, 10=HL, 11=AF
     int reg_pair_idx = (opcode >> 4) & 0x03;
@@ -1109,7 +1195,7 @@ void op_push_rr(GameBoy* gb) {
     if (reg_pair_idx == 3) {
         // Caso especial: PUSH AF
         // Combinamos A (Alto) y F (Bajo)
-        value = (gb->cpu.A << 8) | gb->cpu.F; 
+        value = (gb->cpu.a << 8) | gb->cpu.f; 
     }
     else {
         // Casos normales: BC, DE, HL
@@ -1120,40 +1206,40 @@ void op_push_rr(GameBoy* gb) {
     // Orden: Primero HIGH byte, luego LOW byte. SP decrementa ANTES de escribir
     
     // Paso 1: Byte Alto
-    gb->cpu.SP--;
-    bus_write(gb, gb->cpu.SP, (value >> 8) & 0xFF);
+    gb->cpu.sp--;
+    bus_write(gb, gb->cpu.sp, (value >> 8) & 0xFF);
 
     // Paso 2: Byte Bajo
-    gb->cpu.SP--;
-    bus_write(gb, gb->cpu.SP, value & 0xFF);
+    gb->cpu.sp--;
+    bus_write(gb, gb->cpu.sp, value & 0xFF);
 }
 
 // --------------------- POP -----------------------------
 void op_pop_rr(GameBoy* gb) {
     // 1. Decodificar
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     int reg_pair_idx = (opcode >> 4) & 0x03;
     
     // 2. Leer de la Pila (POP)
     // Orden inverso a PUSH: Primero LOW byte, luego HIGH byte.
 
     // Paso 1: Byte Bajo
-    u8 lo = bus_read(gb, gb->cpu.SP);
-    gb->cpu.SP++;
+    u8 lo = bus_read(gb, gb->cpu.sp);
+    gb->cpu.sp++;
     
     // Paso 2: Byte Alto
-    u8 hi = bus_read(gb, gb->cpu.SP);
-    gb->cpu.SP++;
+    u8 hi = bus_read(gb, gb->cpu.sp);
+    gb->cpu.sp++;
 
     u16 value = (hi << 8)| lo;
 
     // 3. Escribir en el registro destino
     if (reg_pair_idx == 3) {
         // --- CASO ESPECIAL: POP AF ---
-        gb->cpu.A = (value >> 8) & 0xFF; // Byte Alto -> A
+        gb->cpu.a = (value >> 8) & 0xFF; // Byte Alto -> A
 
         // ¡CRÍTICO! El registro F tiene los 4 bits bajos SIEMPRE a 0.
-        gb->cpu.F = value & 0xF0;
+        gb->cpu.f = value & 0xF0;
     }
     else {
         // --- CASO NORMAL: BC, DE, HL ---
@@ -1171,7 +1257,7 @@ void op_pop_rr(GameBoy* gb) {
 
 // Helper interno: Devuelve true si la condición se cumple
 bool check_condition(GameBoy* gb, int condition_code) {
-    u8 f = gb->cpu.F;
+    u8 f = gb->cpu.f;
     switch (condition_code) {
         case 0: return !(f & FLAG_Z); // NZ (Not Zero)
         case 1: return (f & FLAG_Z);  // Z  (Zero)
@@ -1184,24 +1270,24 @@ bool check_condition(GameBoy* gb, int condition_code) {
 // ------------------- JP nn (Incondicional) -----------------
 void op_jp_nn(GameBoy* gb) {
     // 1. Leemos la dirección destino
-    u16 target_addr = bus_read16(gb, gb->cpu.PC);
+    u16 target_addr = bus_read16(gb, gb->cpu.pc);
 
     // 2. Saltamos (sobreescribimos PC)
-    gb->cpu.PC = target_addr;
+    gb->cpu.pc = target_addr;
 }
 
 // ---------------- JP cc, nn (Condicional) ------------------
 void op_jp_cc_nn(GameBoy* gb) {
-    u8 opcode = bus_read(gb, gb->cpu.PC);
+    u8 opcode = bus_read(gb, gb->cpu.pc);
     int cond = (opcode >> 3) && 0x03; // Bits 3-4
 
     // Siempre leemos los argumentos para avanzar el PC correctamente
     // si la condición NO se cumple.
-    u16 target_addr = bus_read16(gb, gb->cpu.PC);
-    gb->cpu.PC += 2; // Avanzamos por defecto (como si no saltáramos)
+    u16 target_addr = bus_read16(gb, gb->cpu.pc);
+    gb->cpu.pc += 2; // Avanzamos por defecto (como si no saltáramos)
 
     if (check_condition(gb, cond)) {
-        gb->cpu.PC = target_addr; // Si se cumple, saltamos
+        gb->cpu.pc = target_addr; // Si se cumple, saltamos
         gb->cpu.cycles += 1; // Coste extra si se toma el salto
     }
 }
@@ -1210,7 +1296,7 @@ void op_jp_cc_nn(GameBoy* gb) {
 // ¡CUIDADO! No lee memoria, salta a la dirección que conitene HL.
 void op_jp_hl(GameBoy* gb) {
     u16 hl = get_hl(&gb->cpu);
-    gb->cpu.PC = hl;
+    gb->cpu.pc = hl;
 }
 
 // ------------------------- JR ----------------------------------
@@ -1221,11 +1307,11 @@ void op_jp_hl(GameBoy* gb) {
 void op_jr_common(GameBoy* gb, bool jump_taken) {
     // 1. Leemos el offset como SIGNED int8
     // Es vital el cast a (int8_t) para que C entienda que 0xFF es -1.
-    int8_t offset = (int8_t)bus_read(gb, gb->cpu.PC);
-    gb->cpu.PC++; // Consumimos el byte del offset
+    int8_t offset = (int8_t)bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++; // Consumimos el byte del offset
 
     if (jump_taken) {
-        gb->cpu.PC += offset; // Suma con signo (puede restar)
+        gb->cpu.pc += offset; // Suma con signo (puede restar)
     }
 }
 
@@ -1237,7 +1323,7 @@ void op_jr_e(GameBoy* gb) {
 // -------------------- JR cc, e (Condicional) -----------------------
 // Opcodes 0x20, 0x28, 0x30, 0x38
 void op_jr_cc_e(GameBoy* gb) {
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     int cond = (opcode >> 3) & 0x03;
 
     bool jump_taken = check_condition(gb, cond); 
@@ -1250,38 +1336,38 @@ void op_jr_cc_e(GameBoy* gb) {
 
 // Helper para guardar el PC actual en la pila
 void push_pc(GameBoy* gb) {
-    u16 return_addr = gb->cpu.PC;
+    u16 return_addr = gb->cpu.pc;
 
-    gb->cpu.SP--;
+    gb->cpu.sp--;
     u8 hi = (return_addr >> 8) & 0xFF;
-    bus_write(gb, gb->cpu.SP, hi);
+    bus_write(gb, gb->cpu.sp, hi);
 
     u8 lo = (return_addr & 0xFF);
-    bus_write(gb, gb->cpu.SP, lo);
+    bus_write(gb, gb->cpu.sp, lo);
 }
 
 // ------------------- CALL nn (Incondicional ) ---------------------
 // Opcode 0xCD
 void op_call_nn(GameBoy* gb) {
-    u16 target_addr = bus_read16(gb, gb->cpu.PC);
-    gb->cpu.PC += 2; // El PC ahora apunta a la instrucción SIGUIENTE (Retorno)
+    u16 target_addr = bus_read16(gb, gb->cpu.pc);
+    gb->cpu.pc += 2; // El PC ahora apunta a la instrucción SIGUIENTE (Retorno)
 
     push_pc(gb);    // Guardamos esta dirección de retorno
-    gb->cpu.PC = target_addr; // Saltamos
+    gb->cpu.pc = target_addr; // Saltamos
 }
 
 // ------------------- CALL cc, nn (Condicional) ---------------------
 // Opcodes 0cC4, 0xCC, 0xD4, 0xDC
 void op_call_cc_nn(GameBoy* gb) {
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     int cond = (opcode >> 3) & 0x03;
 
-    u16 target_adddr = bus_read16(gb, gb->cpu.PC);
-    gb->cpu.PC += 2; // Preparamos el PC para continuar si NO saltamos
+    u16 target_adddr = bus_read16(gb, gb->cpu.pc);
+    gb->cpu.pc += 2; // Preparamos el PC para continuar si NO saltamos
 
     if (check_condition(gb, cond)) {
         push_pc(gb); // Solo hacemos PUSH si la condición se cumple
-        gb->cpu.PC = target_adddr;
+        gb->cpu.pc = target_adddr;
         gb->cpu.cycles += 3; // Coste extra si se toma el salto
     }
 }
@@ -1293,21 +1379,21 @@ void op_call_cc_nn(GameBoy* gb) {
 // Opcode: 0xC9
 void op_ret(GameBoy* gb) {
     // Byte bajo primero, byte alto después
-    u8 lo = bus_read(gb, gb->cpu.SP);
-    gb->cpu.SP++;
+    u8 lo = bus_read(gb, gb->cpu.sp);
+    gb->cpu.sp++;
 
-    u8 hi = bus_read(gb, gb->cpu.SP);
-    gb->cpu.SP++;
+    u8 hi = bus_read(gb, gb->cpu.sp);
+    gb->cpu.sp++;
 
     // 2. Actualizar PC
-    gb->cpu.PC = (hi << 8) | lo;
+    gb->cpu.pc = (hi << 8) | lo;
 }
 
 // RET cc (Condicional)
 // Opcodes: 0xC0, 0xC8, 0xD0, 0xD8
 void op_ret_cc(GameBoy* gb) {
     // 1. Decodificamos la condición (bits 3 y 4)
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     int cond = (opcode >> 3) & 0x03;
 
     // 2. Verificamos si se cumple

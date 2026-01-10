@@ -10,21 +10,21 @@ int main(void) {
 
     // 2. Inicialización simple (limpiar basura de memoria)
     cpu_init(&gb.cpu);
-    printf("GameBoy creada. PC inicial: 0x%04X\n", gb.cpu.PC);
+    printf("GameBoy creada. PC inicial: 0x%04X\n", gb.cpu.pc);
 
     // Ejecutamos un ciclo
     cpu_step(&gb);
 
     // Como aún no disponemos de función para cargar cartucho, asignamos el PC
     // a WRAM para pruebas de instrucciones
-    gb.cpu.PC = 0xC001; // Dirección en WRAM
+    gb.cpu.pc = 0xC001; // Dirección en WRAM
 
     // Test de instrucciones CP A, r y CP A, d8
     // r = B, C, D, E, H, L, (HL), A
     // Cargamos las instrucciones en memoria
     // Apuntamos HL a 0xC500 y colocamos un valor allí
-    gb.cpu.H = 0xC5;
-    gb.cpu.L = 0x00;
+    gb.cpu.h = 0xC5;
+    gb.cpu.l = 0x00;
     bus_write(&gb, 0xC500, 0x01); // Valor en (HL)
     bus_write(&gb, 0xC001, 0xb8); // CP B
     bus_write(&gb, 0xC002, 0xb9); // CP C
