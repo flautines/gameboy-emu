@@ -41,7 +41,8 @@ void op_or_a_d8(GameBoy* gb);
 
 void op_ld_addr_rr_a(GameBoy* gb);
 void op_ld_a_addr_rr(GameBoy* gb);
-void op_inc_dec_rr(GameBoy* gb);
+void op_inc_rr(GameBoy* gb);
+void op_dec_rr(GameBoy* gb);
 void op_push_rr(GameBoy* gb);
 void op_pop_rr(GameBoy* gb);
 
@@ -61,7 +62,7 @@ Instruction instruction_set[256] = {
     [0x00] = { .func = op_nop, .name = "NOP", .cycles = 1, .length = 1 },
     [0x01] = { .func = op_ld_rr_d16, .name = "LD BC,d16", .cycles = 3, .length = 3 },
     [0x02] = { .func = op_ld_addr_rr_a, .name = "LD (BC),A", .cycles = 2, .length = 1 },
-    [0x03] = { .func = op_inc_dec_rr, .name = "INC BC", .cycles = 2, .length = 1 },
+    [0x03] = { .func = op_inc_rr, .name = "INC BC", .cycles = 2, .length = 1 },
     [0x04] = { .func = op_inc_r, .name = "INC B", .cycles = 1, .length = 1 },
     [0x05] = { .func = op_dec_r, .name = "DEC B", .cycles = 1, .length = 1 },
     [0x06] = { .func = op_ld_r_d8, .name = "LD B,d8", .cycles = 2, .length = 2 },
@@ -69,7 +70,7 @@ Instruction instruction_set[256] = {
     [0x08] = { .func = NULL, .name = "LD (a16),SP", .cycles = 5, .length = 3 },
     [0x09] = { .func = NULL, .name = "ADD HL,BC", .cycles = 2, .length = 1 },
     [0x0A] = { .func = op_ld_a_addr_rr, .name = "LD A,(BC)", .cycles = 2, .length = 1 },
-    [0x0B] = { .func = op_inc_dec_rr, .name = "DEC BC", .cycles = 2, .length = 1 },
+    [0x0B] = { .func = op_dec_rr, .name = "DEC BC", .cycles = 2, .length = 1 },
     [0x0C] = { .func = op_inc_r, .name = "INC C", .cycles = 1, .length = 1 },
     [0x0D] = { .func = op_dec_r, .name = "DEC C", .cycles = 1, .length = 1 },
     [0x0E] = { .func = op_ld_r_d8, .name = "LD C,d8", .cycles = 2, .length = 2 },
@@ -77,7 +78,7 @@ Instruction instruction_set[256] = {
     [0x10] = { .func = NULL, .name = "STOP", .cycles = 2, .length = 2 },
     [0x11] = { .func = op_ld_rr_d16, .name = "LD DE,d16", .cycles = 3, .length = 3 },
     [0x12] = { .func = op_ld_addr_rr_a, .name = "LD (DE),A", .cycles = 2, .length = 1 },
-    [0x13] = { .func = op_inc_dec_rr, .name = "INC DE", .cycles = 2, .length = 1 },
+    [0x13] = { .func = op_inc_rr, .name = "INC DE", .cycles = 2, .length = 1 },
     [0x14] = { .func = op_inc_r, .name = "INC D", .cycles = 1, .length = 1 },
     [0x15] = { .func = op_dec_r, .name = "DEC D", .cycles = 1, .length = 1 },
     [0x16] = { .func = op_ld_r_d8, .name = "LD D,d8", .cycles = 2, .length = 2 },
@@ -85,7 +86,7 @@ Instruction instruction_set[256] = {
     [0x18] = { .func = op_jr_e, .name = "JR r8", .cycles = 3, .length = 2 },
     [0x19] = { .func = NULL, .name = "ADD HL,DE", .cycles = 2, .length = 1 },
     [0x1A] = { .func = op_ld_a_addr_rr, .name = "LD A,(DE)", .cycles = 2, .length = 1 },
-    [0x1B] = { .func = op_inc_dec_rr, .name = "DEC DE", .cycles = 2, .length = 1 },
+    [0x1B] = { .func = op_dec_rr, .name = "DEC DE", .cycles = 2, .length = 1 },
     [0x1C] = { .func = op_inc_r, .name = "INC E", .cycles = 1, .length = 1 },
     [0x1D] = { .func= op_dec_r, .name = "DEC E", .cycles = 1, .length = 1 },
     [0x1E] = { .func= op_ld_r_d8, .name = "LD E,d8", .cycles = 2, .length = 2 },
@@ -93,7 +94,7 @@ Instruction instruction_set[256] = {
     [0x20] = { .func = op_jr_cc_e, .name = "JR NZ,r8", .cycles = 2, .length = 2 },
     [0x21] = { .func = op_ld_rr_d16, .name = "LD HL,d16", .cycles = 3, .length = 3 },
     [0x22] = { .func = op_ld_addr_rr_a, .name = "LD (HL+),A", .cycles = 2, .length = 1 },
-    [0x23] = { .func = op_inc_dec_rr, .name = "INC HL", .cycles = 2, .length = 1 },
+    [0x23] = { .func = op_inc_rr, .name = "INC HL", .cycles = 2, .length = 1 },
     [0x24] = { .func = op_inc_r, .name = "INC H", .cycles = 1, .length = 1 },
     [0x25] = { .func = op_dec_r, .name = "DEC H", .cycles = 1, .length = 1 },
     [0x26] = { .func = op_ld_r_d8, .name = "LD H,d8", .cycles = 2, .length = 2 },
@@ -101,7 +102,7 @@ Instruction instruction_set[256] = {
     [0x28] = { .func = op_jr_cc_e, .name = "JR Z,r8", .cycles = 2, .length = 2 },
     [0x29] = { .func = NULL, .name = "ADD HL,HL", .cycles = 2, .length = 1 },
     [0x2A] = { .func = op_ld_a_addr_rr, .name = "LD A,(HL+)", .cycles = 2, .length = 1 },
-    [0x2B] = { .func = op_inc_dec_rr, .name = "DEC HL", .cycles = 2, .length = 1 },
+    [0x2B] = { .func = op_dec_rr, .name = "DEC HL", .cycles = 2, .length = 1 },
     [0x2C] = { .func = op_inc_r, .name = "INC L", .cycles = 1, .length = 1 },
     [0x2D] = { .func = op_dec_r, .name = "DEC L", .cycles = 1, .length = 1 },
     [0x2E] = { .func= op_ld_r_d8, .name= "LD L,d8", .cycles = 2, .length = 2 },
@@ -109,7 +110,7 @@ Instruction instruction_set[256] = {
     [0x30] = { .func = op_jr_cc_e, .name = "JR NC,r8", .cycles = 2, .length = 2 },
     [0x31] = { .func = op_ld_rr_d16, .name = "LD SP,d16", .cycles = 3, .length = 3 },
     [0x32] = { .func = op_ld_addr_rr_a, .name = "LD (HL-),A", .cycles = 2, .length = 1 },
-    [0x33] = { .func = op_inc_dec_rr, .name = "INC SP", .cycles = 2, .length = 1 },
+    [0x33] = { .func = op_inc_rr, .name = "INC SP", .cycles = 2, .length = 1 },
     [0x34] = { .func = op_inc_r, .name = "INC (HL)", .cycles = 3, .length = 1 },
     [0x35] = { .func = op_dec_r, .name = "DEC (HL)", .cycles = 3, .length = 1 },
     [0x36] = { .func = op_ld_r_d8, .name = "LD (HL),d8", .cycles = 3, .length = 2 },
@@ -117,7 +118,7 @@ Instruction instruction_set[256] = {
     [0x38] = { .func = op_jr_cc_e, .name = "JR C,r8", .cycles = 2, .length = 2 },
     [0x39] = { .func = NULL, .name = "ADD HL,SP", .cycles = 2, .length = 1 },
     [0x3A] = { .func = op_ld_a_addr_rr, .name = "LD A,(HL-)", .cycles = 2, .length = 1 },
-    [0x3B] = { .func = op_inc_dec_rr, .name = "DEC SP", .cycles = 2, .length = 1 },
+    [0x3B] = { .func = op_dec_rr, .name = "DEC SP", .cycles = 2, .length = 1 },
     [0x3C] = { .func = op_inc_r, .name = "INC A", .cycles = 1, .length = 1 },
     [0x3D] = { .func= op_dec_r, .name= "DEC A", .cycles = 1, .length = 1 },
     [0x3E] = { .func= op_ld_r_d8, .name= "LD A,d8", .cycles = 2, .length = 2 },
@@ -590,6 +591,7 @@ void op_ld_r_d8(GameBoy* gb) {
 }
 
 // Cargas de 16 bits
+
 // ----------------- LD rr, d16 ----------------------------
 void op_ld_rr_d16(GameBoy* gb) {
     // 1. Decodificación (PC apunta al byte siguiente al opcode)
@@ -828,21 +830,33 @@ void op_dec_r(GameBoy* gb) {
     }
 }
 
-// INC y DEC de pares de registros de 16 bits
-void op_inc_dec_rr(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
+// --------------------- INC rr (16 bits) --------------------------
+// Opcodes: 0x03, 0x13, 0x23, 0x33
+void op_inc_rr(GameBoy* gb) {
     u8 opcode = bus_read(gb, gb->cpu.pc - 1);
 
-    // 2. Extraemos el índice del par de registros
-    // Formato del opcode: 
-    //   INC 00 rr 0011 / DEC 00 rr 1011
-    int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
-    u16 value = get_register_pair(&gb->cpu, reg_pair_index);
-    int8_t delta = (opcode & 0x08) ? -1 : 1; // DEC si bit 3 es 1, INC si es 0
-    value += delta;
-    write_register_pair(&gb->cpu, reg_pair_index, value);
+    // Bits 4-5: Registro (BC, DE, HL, SP)
+    int reg_idx = (opcode >> 4) & 0x03;
 
-    // INC/DEC de pares de registros no afecta flags
+    u16 val = get_register_pair(&gb->cpu, reg_idx);
+
+    // Incremento simple (el desbordamiento de 0xFFFF a 0x0000 es automático en u16)
+    val++;
+
+    write_register_pair(&gb->cpu, reg_idx, val);
+}
+
+// ---------------------- DEC rr (16 bits) ------------------------
+void op_dec_rr(GameBoy* gb) {
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
+    int reg_idx = (opcode >> 4) & 0x03;
+
+    u16 val = get_register_pair(&gb->cpu, reg_idx);
+
+    // Decremento simple
+    val--;
+
+    write_register_pair(&gb->cpu, reg_idx, val);
 }
 
 // Helper interno: Calcula flags para ADD y ADC
@@ -1162,23 +1176,6 @@ void op_xor_a_d8(GameBoy* gb) {
 
     gb->cpu.a ^= val;
     set_logic_op_flags(gb, 0);
-}
-
-// INC rr: Incrementa par de registros
-void op_inc_rr(GameBoy* gb) {
-    // Implementación de la instrucción INC rr
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
-    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
-
-    // 2. Extraemos el índice del par de registros
-    // Formato del opcode: 00 rr 0011
-    int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
-    u16 value = (get_register_pair(&gb->cpu, reg_pair_index) + 1) & 0xFFFF;
-
-    // 3. Incrementamos el valor del par de registros
-    write_register_pair(&gb->cpu, reg_pair_index, value);
-
-    // INC rr no afecta a los flags
 }
 
 // --------------------- PUSH rr -------------------------
