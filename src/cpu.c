@@ -445,6 +445,8 @@ u16 get_register_pair(Cpu* cpu, int index) {
     return 0; // Indicador de error
 }
 
+// ---------------------- IMPLEMENTACIÓN DE LAS INSTRUCCIONES -----------------
+
 // Función NOP (No Operation)
 void op_nop(GameBoy* gb) {
     // No hace nada
@@ -558,7 +560,7 @@ void op_ld_addr_rr_a(GameBoy* gb) {
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
 
     // 2. Extraemos el índice (Bits 4-5)
-    int idx = (opcode >> 3) & 0x03;
+    RegisterPairIndex idx = (RegisterPairIndex)((opcode >> 4) & 0x03);
 
     u16 addr = 0;
 
@@ -586,8 +588,7 @@ void op_ld_addr_rr_a(GameBoy* gb) {
         break;
 
         default:
-            // Técnicamente no debería llegar aquí, 
-            // pero ponerlo elimina cualquier duda del análisis estático del compilador.
+            // No debería llegar aquí, pero así hacemos feliz al compilador
             printf("Error crítico: Índice de par inválido %d\n", idx);
             return;
     }
@@ -596,39 +597,50 @@ void op_ld_addr_rr_a(GameBoy* gb) {
     bus_write(gb, addr, gb->cpu.A);
 }
  
-// LD A, (rr): Carga en A el valor desde la dirección apuntada por el par de registros rr
+// ------------------- LD A, (rr) ----------------------------------
+// Carga en A el valor de memoria apuntado por BC, DE o HL (con inc/dec)
+// Opcodes: 0x0A, 0x1A, 0x2A, 0x3A
 void op_ld_a_addr_rr(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
+    // 1. Recuperamos el opcode
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
-    
-    // 2. Extraemos el índice del par de registros
-    // Opcode: 00 rr 1010
-    int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
 
-    u16 addr = 0x0000;
-    // 3. Obtenemos la dirección desde el par de registros
-    // Caso especial 0x3A, reg_pair_index == 3 devolvería SP, pero queremos HL
-    if (reg_pair_index == 3) {
-        addr = get_hl(&gb->cpu);
-    }
-    else {
-        addr = get_register_pair(&gb->cpu, reg_pair_index);
+    // 2. Extraemos el índice del par (Bits 4-5)
+    RegisterPairIndex idx = (RegisterPairIndex)((opcode >> 4) & 0x03);
+
+    u16 addr = 0;
+
+    // 3. Obtenemos la dirección y aplicamos efectos secundarios (HL+/-)
+    switch(idx) {
+        case REG_PAIR_BC: // 0x02
+            addr = get_register_pair(&gb->cpu, REG_PAIR_BC);
+            break;
+
+        case REG_PAIR_DE: // 0x12
+            addr = get_register_pair(&gb->cpu, REG_PAIR_DE);
+            break;
+
+        case REG_PAIR_HL: // 0x22: LD (HL+), A
+            addr = get_register_pair(&gb->cpu, REG_PAIR_HL);
+            // Efecto secundario: Incremento
+            write_register_pair(&gb->cpu, REG_PAIR_HL, addr + 1);
+            break;
+
+        case REG_PAIR_SP: // 0x32: LD (HL-), A
+            // El índice binario 3 se interpreta como "HL con Decremento"
+            addr = get_register_pair(&gb->cpu, REG_PAIR_HL);
+
+            // Efecto secundario: Decremento
+            write_register_pair(&gb->cpu, REG_PAIR_HL, addr - 1);
+            break;
+
+        default:
+            // No debería llegar aquí, pero así hacemos feliz al compilador
+            printf("Error crítico: Índice de par inválido en LD A, (rr): %d\n", idx);
+            return;
     }
 
-    // 4. Leemos el valor desde la dirección obtenida y lo cargamos en A
+    // 4. Lectura de memoria hacia el registro A
     gb->cpu.A = bus_read(gb, addr);
-
-    // 5. Manejo de los casos especiales de auto-incremento/decremento
-    if (reg_pair_index == 2) {
-        // LD A, (HL+)
-        addr++;
-        write_register_pair(&gb->cpu, 2, addr);
-    }
-    else if (reg_pair_index == 3) {
-        // LD A, (HL-)
-        addr--;
-        write_register_pair(&gb->cpu, 2, addr);
-    }
 }
 
 void op_halt(GameBoy* gb) {
