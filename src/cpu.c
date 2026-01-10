@@ -52,6 +52,9 @@ void op_jr_e(GameBoy* gb);
 void op_jr_cc_e(GameBoy* gb);
 void op_call_nn(GameBoy* gb);
 void op_call_cc_nn(GameBoy* gb);
+void op_ret(GameBoy* gb);
+void op_ret_cc(GameBoy* gb);
+void op_reti(GameBoy* gb);
 
 // Tabla de instrucciones (completa con todas las instrucciones)
 Instruction instruction_set[256] = {
@@ -428,7 +431,7 @@ void write_register_pair(Cpu* cpu, int index, u16 value) {
 
 // Helper: Lee un valor de 16 bits del par de registros dado
 // index: 0=BC, 1=DE, 2=HL, 3=SP
-u16 read_register_pair(Cpu* cpu, int index) {
+u16 get_register_pair(Cpu* cpu, int index) {
     switch (index) {
         case 0: // BC
             return ((u16)cpu->B << 8) | cpu->C;
@@ -547,42 +550,52 @@ void op_ld_rr_d16(GameBoy* gb) {
     gb->cpu.PC += 2;
 }
 
-// LD (rr), A: Almacena el valor de A en la dirección apuntada por el par de registros rr
+// ------------------- LD (rr), A ----------------------------------
+// Escribe A en la dirección apuntada por BC, DE o HL (con inc/dec)
+// Opcodes: 0x02, 0x12, 0x22, 0x32
 void op_ld_addr_rr_a(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
+    // 1. Recuperamos opcode
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
 
-    // 2. Extraemos el índice del par de registros
-    // Opcode: 00 rr 0010
-    int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
-    
-    u16 addr = 0x0000;
-    // 3. Obtenemos la dirección desde el par de registros
-    // Caso especial 0x22 y 0x32 (LD (HL+), A y LD (HL-), A)
-    if (reg_pair_index == 3) {
-        addr = get_hl(&gb->cpu);
-    }
-    else {
-        addr = read_register_pair(&gb->cpu, reg_pair_index);
-    }
-    
-    // 4. Escribimos el valor de A en la dirección obtenida
-    bus_write(gb, addr, gb->cpu.A);    
-    
-    // 5. Manejo de los casos especiales de auto-incremento/decremento
-    if (reg_pair_index == 2) {
-        // LD (HL+), A
-        addr++;
-        write_register_pair(&gb->cpu, 2, addr);
-    }
-    else if (reg_pair_index == 3) {
-        // LD (HL-), A
-        addr--;
-        write_register_pair(&gb->cpu, 2, addr);
-    }
-    
-}
+    // 2. Extraemos el índice (Bits 4-5)
+    int idx = (opcode >> 3) & 0x03;
 
+    u16 addr = 0;
+
+    // 3. Lógica específica por registro
+    switch (idx) {
+        case REG_PAIR_BC: // 0x02
+            addr = get_register_pair(&gb->cpu, REG_PAIR_BC);
+        break;
+
+        case REG_PAIR_DE: // 0x12
+            addr = get_register_pair(&gb->cpu, REG_PAIR_DE);
+        break;
+
+        case REG_PAIR_HL: // 0x22: LD (HL+), A (También llamado LDI (HL), A)
+            addr = get_register_pair(&gb->cpu, REG_PAIR_HL);
+            // Incrementamos HL después de obtener la dirección original
+            write_register_pair(&gb->cpu, REG_PAIR_HL, addr + 1);
+        break;
+
+        case REG_PAIR_SP: // 0x32: LD (HL-), A (También llamado LDD (HL), A)
+            // ¡OJO! A nivel de bits del opcode es un '3' (lo que sería SP normalmente)
+            // pero esta instrucción ESPECÍFICA lo interpreta como "HL con Decremento"
+            addr = get_register_pair(&gb->cpu, REG_PAIR_HL); // Leer HL
+            write_register_pair(&gb->cpu, REG_PAIR_HL, addr - 1);
+        break;
+
+        default:
+            // Técnicamente no debería llegar aquí, 
+            // pero ponerlo elimina cualquier duda del análisis estático del compilador.
+            printf("Error crítico: Índice de par inválido %d\n", idx);
+            return;
+    }
+
+    // 4. Escribimos A en memoria
+    bus_write(gb, addr, gb->cpu.A);
+}
+ 
 // LD A, (rr): Carga en A el valor desde la dirección apuntada por el par de registros rr
 void op_ld_a_addr_rr(GameBoy* gb) {
     // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
@@ -599,7 +612,7 @@ void op_ld_a_addr_rr(GameBoy* gb) {
         addr = get_hl(&gb->cpu);
     }
     else {
-        addr = read_register_pair(&gb->cpu, reg_pair_index);
+        addr = get_register_pair(&gb->cpu, reg_pair_index);
     }
 
     // 4. Leemos el valor desde la dirección obtenida y lo cargamos en A
@@ -726,7 +739,7 @@ void op_inc_dec_rr(GameBoy* gb) {
     // Formato del opcode: 
     //   INC 00 rr 0011 / DEC 00 rr 1011
     int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
-    u16 value = read_register_pair(&gb->cpu, reg_pair_index);
+    u16 value = get_register_pair(&gb->cpu, reg_pair_index);
     int8_t delta = (opcode & 0x08) ? -1 : 1; // DEC si bit 3 es 1, INC si es 0
     value += delta;
     write_register_pair(&gb->cpu, reg_pair_index, value);
@@ -1062,7 +1075,7 @@ void op_inc_rr(GameBoy* gb) {
     // 2. Extraemos el índice del par de registros
     // Formato del opcode: 00 rr 0011
     int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
-    u16 value = (read_register_pair(&gb->cpu, reg_pair_index) + 1) & 0xFFFF;
+    u16 value = (get_register_pair(&gb->cpu, reg_pair_index) + 1) & 0xFFFF;
 
     // 3. Incrementamos el valor del par de registros
     write_register_pair(&gb->cpu, reg_pair_index, value);
@@ -1088,7 +1101,7 @@ void op_push_rr(GameBoy* gb) {
     }
     else {
         // Casos normales: BC, DE, HL
-        value = read_register_pair(&gb->cpu, reg_pair_idx);
+        value = get_register_pair(&gb->cpu, reg_pair_idx);
     }
     
     // 3. Escribir en la Pila (PUSH)

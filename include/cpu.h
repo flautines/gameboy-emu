@@ -43,6 +43,14 @@ typedef struct {
     u8 cycles;   // Ciclos totales ejecutados de reloj
 } Cpu;
 
+typedef enum {
+    REG_PAIR_BC = 0,
+    REG_PAIR_DE = 1,
+    REG_PAIR_HL = 2,
+    REG_PAIR_SP = 3, // Usado en instrucciones aritméticas/carga
+    REG_PAIR_AF = 3, // Usado en PUSH/POP (Alias para claridad)
+} RegisterPairIndex;
+
 // Helpers para leer/escribir pares de registros
 // Nota: GameBoy es Little Endian, pero los registros pares se leen High-Low.
 // BC -> B es el byte alto, C es el byte bajo.
