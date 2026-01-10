@@ -3,36 +3,44 @@
 
 #include "common.h"
 
-#define CPU_F_Z  0x80 // Zero Flag
-#define CPU_F_N  0x40 // Subtract Flag
-#define CPU_F_H  0x20 // Half Carry Flag
-#define CPU_F_C  0x10 // Carry Flag
+#define FLAG_Z  0x80 // Zero Flag
+#define FLAG_N  0x40 // Subtract Flag
+#define FLAG_H  0x20 // Half Carry Flag
+#define FLAG_C  0x10 // Carry Flag
 
 // Helper para el Flag Z (Zero)
-#define CHECK_ZERO(value) ((value) == 0 ? CPU_F_Z : 0)
+#define CHECK_ZERO(value) ((value) == 0 ? FLAG_Z : 0)
 
 // Helpers para Half Carry
-#define CHECK_HALF_CARRY_ADD(a, b) ((((a) & 0x0F) + ((b) & 0x0F)) > 0x0F ? CPU_F_H : 0)
-#define CHECK_HALF_CARRY_SUB(a, b) ((((a) & 0x0F) < ((b) & 0x0F)) ? CPU_F_H : 0)
-#define CHECK_CARRY_ADD(a, b) (((u16)(a) + (u16)(b)) > 0xFF ? CPU_F_C : 0)
-#define CHECK_CARRY_SUB(a, b) ((a) < (b) ? CPU_F_C : 0)
+// Comprobamos si la suma de los nibbles bajos desborda (supera 15)
+// Fórmula: (A & 0xF) + (val & 0xF) + carry_in > 0xF
+#define CHECK_HALF_CARRY_ADD(A, val, carry_in) ((((A) & 0x0F) + ((val) & 0x0F) + ((carry_in) & 0x0F)) > 0x0F ? FLAG_H : 0)
+
+#define CHECK_HALF_CARRY_SUB(A, val, carry_in) (((((A) & 0x0F) - (carry_in)) < ((val) & 0x0F)) ? FLAG_H : 0)
+
+// Si el resultado total no cabe en 8 bits (> 255)
+#define CHECK_CARRY_ADD(result) ((result) > 0xFF ? FLAG_C : 0)
+
+#define CHECK_CARRY_SUB(result) ((result) < 0 ? FLAG_C : 0)
 
 typedef struct {
     // Registros de la CPU
-    u8 A;  // Acumulador
-    u8 F;  // Registro de flags
-    u8 B;  // Registro B
-    u8 C;  // Registro C
-    u8 D;  // Registro D
-    u8 E;  // Registro E
-    u8 H;  // Registro H
-    u8 L;  // Registro L
-    u16 SP; // Puntero de pila
-    u16 PC; // Contador de programa
+    u8 A;        // Acumulador
+    u8 F;        // Registro de flags
+    u8 B;        // Registro B
+    u8 C;        // Registro C
+    u8 D;        // Registro D
+    u8 E;        // Registro E
+    u8 H;        // Registro H
+    u8 L;        // Registro L
+    u16 SP;      // Puntero de pila
+    u16 PC;      // Contador de programa
 
     // Estado interno
-    bool ime;        // Interrupt Master Enable
-    bool halted;     // Indica si la CPU está en modo halt
+    bool ime;    // Interrupt Master Enable
+    bool halted; // Indica si la CPU está en modo halt
+
+    u8 cycles;   // Ciclos totales ejecutados de reloj
 } Cpu;
 
 // Helpers para leer/escribir pares de registros

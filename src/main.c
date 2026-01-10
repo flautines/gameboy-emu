@@ -19,30 +19,28 @@ int main(void) {
     // a WRAM para pruebas de instrucciones
     gb.cpu.PC = 0xC001; // Dirección en WRAM
 
-    // Test de opciones PUSH y POP
-    // Cargamos instrucciones en memoria
-    bus_write(&gb, 0xC001, 0xE5); // PUSH BC
-    bus_write(&gb, 0xC002, 0xD5); // PUSH DE
-    bus_write(&gb, 0xC003, 0xC5); // PUSH HL
-    bus_write(&gb, 0xC004, 0xF5); // PUSH AF
-
-    // INC r para ver cambios antes de POP
-    bus_write(&gb, 0xC005, 0x04); // INC B
-    bus_write(&gb, 0xC006, 0x14); // INC D
-    bus_write(&gb, 0xC007, 0x24); // INC H
-    bus_write(&gb, 0xC008, 0x3C); // INC A
-
-    bus_write(&gb, 0xC009, 0xF1); // POP AF
-    bus_write(&gb, 0xC00A, 0xC1); // POP HL
-    bus_write(&gb, 0xC00B, 0xD1); // POP DE
-    bus_write(&gb, 0xC00C, 0xE1); // POP BC
-    
-    
-
-    printf("-------------- [TEST] PUSH/POP rr ---------------------\n");
-    for (int i = 0; i < 12; i++) {
+    // Test de instrucciones CP A, r y CP A, d8
+    // r = B, C, D, E, H, L, (HL), A
+    // Cargamos las instrucciones en memoria
+    // Apuntamos HL a 0xC500 y colocamos un valor allí
+    gb.cpu.H = 0xC5;
+    gb.cpu.L = 0x00;
+    bus_write(&gb, 0xC500, 0x01); // Valor en (HL)
+    bus_write(&gb, 0xC001, 0xb8); // CP B
+    bus_write(&gb, 0xC002, 0xb9); // CP C
+    bus_write(&gb, 0xC003, 0xba); // CP D
+    bus_write(&gb, 0xC004, 0xbb); // CP E
+    bus_write(&gb, 0xC005, 0xbc); // CP H
+    bus_write(&gb, 0xC006, 0xbd); // CP L
+    bus_write(&gb, 0xC007, 0xbe); // CP (HL)
+    bus_write(&gb, 0xC008, 0xbf); // CP A
+    bus_write(&gb, 0xC009, 0xFE); // CP d8
+    bus_write(&gb, 0xC00A, 0x05); // d8 = 0x05
+    // Ejecutamos las instrucciones
+    for (int i = 0; i < 9; i++) {
         cpu_step(&gb);
     }
+
     
     printf("\n--- TEST FINALIZADO CON ÉXITO ---\n");
     return 0;

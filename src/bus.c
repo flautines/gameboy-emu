@@ -58,6 +58,12 @@ u8 bus_read(GameBoy* gb, u16 address) {
     return 0xFF;
 }
 
+u16 bus_read16(GameBoy* gb, u16 addr) {
+    u8 lo = bus_read(gb, addr);
+    u8 hi = bus_read(gb, addr + 1);
+    return (hi << 8) | lo;
+}
+
 void bus_write(GameBoy* gb, u16 address, u8 value) {
     if (address < 0x8000) {
         // ¡IMPORTANTE! Escribir en ROM configura el MBC (Banking)

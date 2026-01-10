@@ -16,14 +16,29 @@ void op_nop(GameBoy* gb);
 void op_ld_r_r(GameBoy* gb);
 void op_ld_r_d8(GameBoy* gb);
 void op_ld_rr_d16(GameBoy* gb);
+
 void op_halt(GameBoy* gb);
+
 void op_inc_r(GameBoy* gb);
 void op_dec_r(GameBoy* gb);
-void op_add_addc_a_r(GameBoy* gb);
-void op_sub_sbc_a_r(GameBoy* gb);
+
+void op_add_a_r(GameBoy* gb);
+void op_add_a_d8(GameBoy* gb);
+void op_adc_a_r(GameBoy* gb);
+void op_adc_a_d8(GameBoy* gb);
+void op_sub_a_r(GameBoy* gb);
+void op_sub_a_d8(GameBoy* gb);
+void op_sbc_a_r(GameBoy* gb);
+void op_sbc_a_d8(GameBoy* gb);
+void op_cp_a_r(GameBoy* gb);
+void op_cp_a_d8(GameBoy* gb);
 void op_and_a_r(GameBoy* gb);
+void op_and_a_d8(GameBoy* gb);
 void op_xor_a_r(GameBoy* gb);
+void op_xor_a_d8(GameBoy* gb);
 void op_or_a_r(GameBoy* gb);
+void op_or_a_d8(GameBoy* gb);
+
 void op_ld_addr_rr_a(GameBoy* gb);
 void op_ld_a_addr_rr(GameBoy* gb);
 void op_inc_dec_rr(GameBoy* gb);
@@ -160,38 +175,38 @@ Instruction instruction_set[256] = {
     [0x7D] = { .func = op_ld_r_r, .name= "LD A,L", .cycles = 1, .length = 1 },
     [0x7E] = { .func = op_ld_r_r, .name= "LD A,(HL)", .cycles = 2, .length = 1 },
     [0x7F] = { .func = op_ld_r_r, .name= "LD A,A", .cycles = 1, .length = 1 },
-    [0x80] = { .func = op_add_addc_a_r, .name = "ADD A,B", .cycles = 1, .length = 1 },
-    [0x81] = { .func = op_add_addc_a_r, .name = "ADD A,C", .cycles = 1, .length = 1 },
-    [0x82] = { .func = op_add_addc_a_r, .name = "ADD A,D", .cycles = 1, .length = 1 },
-    [0x83] = { .func = op_add_addc_a_r, .name = "ADD A,E", .cycles = 1, .length = 1 },
-    [0x84] = { .func = op_add_addc_a_r, .name = "ADD A,H", .cycles = 1, .length = 1 },
-    [0x85] = { .func = op_add_addc_a_r, .name = "ADD A,L", .cycles = 1, .length = 1 },
-    [0x86] = { .func = op_add_addc_a_r, .name = "ADD A,(HL)", .cycles = 2, .length = 1 },
-    [0x87] = { .func = op_add_addc_a_r, .name = "ADD A,A", .cycles = 1, .length = 1 },
-    [0x88] = { .func = op_add_addc_a_r, .name = "ADC A,B", .cycles = 1, .length = 1 },
-    [0x89] = { .func = op_add_addc_a_r, .name = "ADC A,C", .cycles = 1, .length = 1 },
-    [0x8A] = { .func = op_add_addc_a_r, .name = "ADC A,D", .cycles = 1, .length = 1 },
-    [0x8B] = { .func = op_add_addc_a_r, .name = "ADC A,E", .cycles = 1, .length = 1 },
-    [0x8C] = { .func = op_add_addc_a_r, .name = "ADC A,H", .cycles = 1, .length = 1 },
-    [0x8D] = { .func = op_add_addc_a_r, .name= "ADC A,L", .cycles= 1, .length= 1 },
-    [0x8E] = { .func= op_add_addc_a_r, .name= "ADC A,(HL)",.cycles=2,.length=1},
-    [0x8F] = { .func=op_add_addc_a_r, .name="ADC A,A",.cycles=1,.length=1},
-    [0x90] = { .func = op_sub_sbc_a_r, .name = "SUB B", .cycles = 1, .length = 1 },
-    [0x91] = { .func = op_sub_sbc_a_r, .name = "SUB C", .cycles = 1, .length = 1 },
-    [0x92] = { .func = op_sub_sbc_a_r, .name = "SUB D", .cycles = 1, .length = 1 },
-    [0x93] = { .func = op_sub_sbc_a_r, .name = "SUB E", .cycles = 1, .length = 1 },
-    [0x94] = { .func = op_sub_sbc_a_r, .name = "SUB H", .cycles = 1, .length = 1 },
-    [0x95] = { .func = op_sub_sbc_a_r, .name = "SUB L", .cycles = 1, .length = 1 },
-    [0x96] = { .func = op_sub_sbc_a_r, .name = "SUB (HL)", .cycles = 2, .length = 1 },
-    [0x97] = { .func = op_sub_sbc_a_r, .name = "SUB A", .cycles = 1, .length = 1 },
-    [0x98] = { .func = op_sub_sbc_a_r, .name = "SBC A,B", .cycles = 1, .length = 1 },
-    [0x99] = { .func = op_sub_sbc_a_r, .name = "SBC A,C", .cycles = 1, .length = 1 },
-    [0x9A] = { .func = op_sub_sbc_a_r, .name = "SBC A,D", .cycles = 1, .length = 1 },
-    [0x9B] = { .func = op_sub_sbc_a_r, .name = "SBC A,E", .cycles = 1, .length = 1 },
-    [0x9C] = { .func = op_sub_sbc_a_r, .name = "SBC A,H", .cycles= 1, .length= 1 },
-    [0x9D] = { .func = op_sub_sbc_a_r, .name = "SBC A,L", .cycles= 1, .length= 1 },
-    [0x9E] = { .func = op_sub_sbc_a_r, .name = "SBC A,(HL)",.cycles=2,.length=1},
-    [0x9F] = { .func = op_sub_sbc_a_r, .name = "SBC A,A",.cycles=1,.length=1},
+    [0x80] = { .func = op_add_a_r, .name = "ADD A,B", .cycles = 1, .length = 1 },
+    [0x81] = { .func = op_add_a_r, .name = "ADD A,C", .cycles = 1, .length = 1 },
+    [0x82] = { .func = op_add_a_r, .name = "ADD A,D", .cycles = 1, .length = 1 },
+    [0x83] = { .func = op_add_a_r, .name = "ADD A,E", .cycles = 1, .length = 1 },
+    [0x84] = { .func = op_add_a_r, .name = "ADD A,H", .cycles = 1, .length = 1 },
+    [0x85] = { .func = op_add_a_r, .name = "ADD A,L", .cycles = 1, .length = 1 },
+    [0x86] = { .func = op_add_a_r, .name = "ADD A,(HL)", .cycles = 2, .length = 1 },
+    [0x87] = { .func = op_add_a_r, .name = "ADD A,A", .cycles = 1, .length = 1 },
+    [0x88] = { .func = op_adc_a_r, .name = "ADC A,B", .cycles = 1, .length = 1 },
+    [0x89] = { .func = op_adc_a_r, .name = "ADC A,C", .cycles = 1, .length = 1 },
+    [0x8A] = { .func = op_adc_a_r, .name = "ADC A,D", .cycles = 1, .length = 1 },
+    [0x8B] = { .func = op_adc_a_r, .name = "ADC A,E", .cycles = 1, .length = 1 },
+    [0x8C] = { .func = op_adc_a_r, .name = "ADC A,H", .cycles = 1, .length = 1 },
+    [0x8D] = { .func = op_adc_a_r, .name= "ADC A,L", .cycles= 1, .length= 1 },
+    [0x8E] = { .func= op_adc_a_r, .name= "ADC A,(HL)",.cycles=2,.length=1},
+    [0x8F] = { .func=op_adc_a_r, .name="ADC A,A",.cycles=1,.length=1},
+    [0x90] = { .func = op_sub_a_r, .name = "SUB B", .cycles = 1, .length = 1 },
+    [0x91] = { .func = op_sub_a_r, .name = "SUB C", .cycles = 1, .length = 1 },
+    [0x92] = { .func = op_sub_a_r, .name = "SUB D", .cycles = 1, .length = 1 },
+    [0x93] = { .func = op_sub_a_r, .name = "SUB E", .cycles = 1, .length = 1 },
+    [0x94] = { .func = op_sub_a_r, .name = "SUB H", .cycles = 1, .length = 1 },
+    [0x95] = { .func = op_sub_a_r, .name = "SUB L", .cycles = 1, .length = 1 },
+    [0x96] = { .func = op_sub_a_r, .name = "SUB (HL)", .cycles = 2, .length = 1 },
+    [0x97] = { .func = op_sub_a_r, .name = "SUB A", .cycles = 1, .length = 1 },
+    [0x98] = { .func = op_sbc_a_r, .name = "SBC A,B", .cycles = 1, .length = 1 },
+    [0x99] = { .func = op_sbc_a_r, .name = "SBC A,C", .cycles = 1, .length = 1 },
+    [0x9A] = { .func = op_sbc_a_r, .name = "SBC A,D", .cycles = 1, .length = 1 },
+    [0x9B] = { .func = op_sbc_a_r, .name = "SBC A,E", .cycles = 1, .length = 1 },
+    [0x9C] = { .func = op_sbc_a_r, .name = "SBC A,H", .cycles= 1, .length= 1 },
+    [0x9D] = { .func = op_sbc_a_r, .name = "SBC A,L", .cycles= 1, .length= 1 },
+    [0x9E] = { .func = op_sbc_a_r, .name = "SBC A,(HL)",.cycles=2,.length=1},
+    [0x9F] = { .func = op_sbc_a_r, .name = "SBC A,A",.cycles=1,.length=1},
     [0xA0] = { .func = op_and_a_r, .name = "AND B", .cycles = 1, .length = 1 },
     [0xA1] = { .func = op_and_a_r, .name = "AND C", .cycles = 1, .length = 1 },
     [0xA2] = { .func = op_and_a_r, .name = "AND D", .cycles = 1, .length = 1 },
@@ -216,21 +231,21 @@ Instruction instruction_set[256] = {
     [0xB5] = { .func = op_or_a_r, .name = "OR L", .cycles = 1, .length = 1 },
     [0xB6] = { .func = op_or_a_r, .name = "OR (HL)", .cycles = 2, .length = 1 },
     [0xB7] = { .func = op_or_a_r, .name = "OR A", .cycles = 1, .length = 1 },
-    [0xB8] = { .func = NULL, .name = "CP B", .cycles = 1, .length = 1 },
-    [0xB9] = { .func = NULL, .name = "CP C", .cycles = 1, .length = 1 },
-    [0xBA] = { .func = NULL, .name = "CP D", .cycles = 1, .length = 1 },
-    [0xBB] = { .func = NULL, .name = "CP E", .cycles = 1, .length = 1 },
-    [0xBC] = { .func = NULL, .name = "CP H", .cycles = 1, .length = 1 },
-    [0xBD] = { .func = NULL, .name = "CP L", .cycles = 1, .length = 1 },
-    [0xBE] = { .func = NULL, .name = "CP (HL)", .cycles = 2, .length = 1 },
-    [0xBF] = { .func = NULL, .name = "CP A", .cycles = 1, .length = 1 },
+    [0xB8] = { .func = op_cp_a_r, .name = "CP B", .cycles = 1, .length = 1 },
+    [0xB9] = { .func = op_cp_a_r, .name = "CP C", .cycles = 1, .length = 1 },
+    [0xBA] = { .func = op_cp_a_r, .name = "CP D", .cycles = 1, .length = 1 },
+    [0xBB] = { .func = op_cp_a_r, .name = "CP E", .cycles = 1, .length = 1 },
+    [0xBC] = { .func = op_cp_a_r, .name = "CP H", .cycles = 1, .length = 1 },
+    [0xBD] = { .func = op_cp_a_r, .name = "CP L", .cycles = 1, .length = 1 },
+    [0xBE] = { .func = op_cp_a_r, .name = "CP (HL)", .cycles = 2, .length = 1 },
+    [0xBF] = { .func = op_cp_a_r, .name = "CP A", .cycles = 1, .length = 1 },
     [0xC0] = { .func = NULL, .name = "RET NZ", .cycles = 2, .length = 1 },
     [0xC1] = { .func = op_pop_rr, .name = "POP BC", .cycles = 3, .length = 1 },
     [0xC2] = { .func = NULL, .name = "JP NZ,a16", .cycles = 3, .length = 3 },
     [0xC3] = { .func = NULL, .name = "JP a16", .cycles = 4, .length = 3 },
     [0xC4] = { .func = NULL, .name = "CALL NZ,a16", .cycles = 3, .length = 3 },
     [0xC5] = { .func = op_push_rr, .name = "PUSH BC", .cycles = 4, .length = 1 },
-    [0xC6] = { .func = op_add_addc_a_r, .name = "ADD A,d8", .cycles = 2, .length = 2 },
+    [0xC6] = { .func = op_add_a_d8, .name = "ADD A,d8", .cycles = 2, .length = 2 },
     [0xC7] = { .func = NULL, .name = "RST 00H", .cycles = 4, .length = 1 },
     [0xC8] = { .func = NULL, .name = "RET Z", .cycles = 2, .length = 1 },
     [0xC9] = { .func = NULL, .name = "RET", .cycles = 4, .length = 1 },
@@ -238,7 +253,7 @@ Instruction instruction_set[256] = {
     [0xCB] = { .func = NULL, .name = "PREFIX CB", .cycles = 0, .length = 1 },
     [0xCC] = { .func = NULL, .name = "CALL Z,a16", .cycles = 3, .length = 3 },
     [0xCD] = { .func = NULL, .name = "CALL a16", .cycles = 6, .length = 3 },
-    [0xCE] = { .func = op_add_addc_a_r, .name = "ADC A,d8", .cycles = 2, .length = 2 },
+    [0xCE] = { .func = op_adc_a_d8, .name = "ADC A,d8", .cycles = 2, .length = 2 },
     [0xCF] = { .func = NULL, .name = "RST 08H", .cycles = 4, .length = 1 },
     [0xD0] = { .func = NULL, .name = "RET NC", .cycles = 2, .length = 1 },
     [0xD1] = { .func = op_pop_rr, .name = "POP DE", .cycles = 3, .length = 1 },
@@ -246,7 +261,7 @@ Instruction instruction_set[256] = {
     [0xD3] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xD4] = { .func = NULL, .name = "CALL NC,a16", .cycles = 3, .length = 3 },
     [0xD5] = { .func = op_push_rr, .name = "PUSH DE", .cycles = 4, .length = 1 },
-    [0xD6] = { .func = op_sub_sbc_a_r, .name = "SUB d8", .cycles = 2, .length = 2 },
+    [0xD6] = { .func = op_sub_a_d8, .name = "SUB d8", .cycles = 2, .length = 2 },
     [0xD7] = { .func = NULL, .name = "RST 10H", .cycles = 4, .length = 1 },
     [0xD8] = { .func = NULL, .name = "RET C", .cycles = 2, .length = 1 },
     [0xD9] = { .func = NULL, .name = "RETI", .cycles = 4, .length = 1 },
@@ -254,7 +269,7 @@ Instruction instruction_set[256] = {
     [0xDB] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xDC] = { .func = NULL, .name = "CALL C,a16", .cycles = 3, .length = 3 },
     [0xDD] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
-    [0xDE] = { .func = op_sub_sbc_a_r, .name = "SBC A,d8", .cycles = 2, .length = 2 },
+    [0xDE] = { .func = op_sbc_a_d8, .name = "SBC A,d8", .cycles = 2, .length = 2 },
     [0xDF] = { .func = NULL, .name = "RST 18H", .cycles = 4, .length = 1 },
     [0xE0] = { .func = NULL, .name = "LDH,(a8),A", .cycles = 3, .length = 2 },
     [0xE1] = { .func = op_pop_rr, .name = "POP HL", .cycles = 3, .length = 1 },
@@ -262,7 +277,7 @@ Instruction instruction_set[256] = {
     [0xE3] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xE4] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xE5] = { .func = op_push_rr, .name = "PUSH HL", .cycles = 4, .length = 1 },
-    [0xE6] = { .func = op_and_a_r, .name = "AND d8", .cycles = 2, .length = 2 },
+    [0xE6] = { .func = op_and_a_d8, .name = "AND d8", .cycles = 2, .length = 2 },
     [0xE7] = { .func = NULL, .name = "RST 20H", .cycles = 4, .length = 1 },
     [0xE8] = { .func = NULL, .name = "ADD SP,r8", .cycles = 4, .length = 2 },
     [0xE9] = { .func = NULL, .name = "JP HL", .cycles = 1, .length = 1 },
@@ -270,7 +285,7 @@ Instruction instruction_set[256] = {
     [0xEB] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xEC] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xED] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
-    [0xEE] = { .func = op_xor_a_r, .name = "XOR d8", .cycles = 2, .length = 2 },
+    [0xEE] = { .func = op_xor_a_d8, .name = "XOR d8", .cycles = 2, .length = 2 },
     [0xEF] = { .func = NULL, .name = "RST 28H", .cycles = 4, .length = 1 },
     [0xF0] = { .func = NULL, .name = "LDH A,(a8)", .cycles = 3, .length = 2 },
     [0xF1] = { .func = op_pop_rr, .name = "POP AF", .cycles = 3, .length = 1 },
@@ -278,7 +293,7 @@ Instruction instruction_set[256] = {
     [0xF3] = { .func = NULL, .name = "DI", .cycles = 1, .length = 1 },
     [0xF4] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xF5] = { .func = op_push_rr, .name = "PUSH AF", .cycles = 4, .length = 1 },
-    [0xF6] = { .func = op_or_a_r, .name = "OR d8", .cycles = 2, .length = 2 },
+    [0xF6] = { .func = op_or_a_d8, .name = "OR d8", .cycles = 2, .length = 2 },
     [0xF7] = { .func = NULL, .name = "RST 30H", .cycles = 4, .length = 1 },
     [0xF8] = { .func = NULL, .name = "LD HL,SP+r8", .cycles = 3, .length = 2 },
     [0xF9] = { .func = NULL, .name = "LD SP,HL", .cycles = 2, .length = 1 },
@@ -286,7 +301,7 @@ Instruction instruction_set[256] = {
     [0xFB] = { .func = NULL, .name = "EI", .cycles = 1, .length = 1 },
     [0xFC] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xFD] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
-    [0xFE] = { .func = NULL, .name = "CP d8", .cycles = 2, .length = 2 },
+    [0xFE] = { .func = op_cp_a_d8, .name = "CP d8", .cycles = 2, .length = 2 },
     [0xFF] = { .func = NULL, .name = "RST 38H", .cycles = 4, .length = 1 },
     
 };
@@ -303,15 +318,14 @@ void print_cpu_state(const Cpu* cpu) {
 
     // Mostrar flags de Z, N, H, C por separado
     printf("%c %c %c %c\t",
-           (cpu->F & CPU_F_Z) ? 'Z' : '.',
-           (cpu->F & CPU_F_N) ? 'N' : '.',
-           (cpu->F & CPU_F_H) ? 'H' : '.',
-           (cpu->F & CPU_F_C) ? 'C' : '.');
+           (cpu->F & FLAG_Z) ? 'Z' : '.',
+           (cpu->F & FLAG_N) ? 'N' : '.',
+           (cpu->F & FLAG_H) ? 'H' : '.',
+           (cpu->F & FLAG_C) ? 'C' : '.');
 
     printf("IME: %d ", cpu->ime);
     printf("Halted: %d\n", cpu->halted);
 }
-
 
 // Inicializa la CPU a su estado por defecto
 void cpu_init(Cpu* cpu) {
@@ -336,23 +350,25 @@ void cpu_init(Cpu* cpu) {
 
 // Retorna el número de M-Cycles consumidos por la instrucción ejecutada
 int cpu_step(GameBoy* gb) {
-    if (gb->cpu.halted) {
-        // En modo halt, no se ejecutan instrucciones
-        return 1; // Consume 1 M-Cycle
-    }
-
-    // 1. FETCH: Leer el opcode en la dirección PC
+    // 1. Obtenemos el PC actual y el opcode
     u8 opcode = bus_read(gb, gb->cpu.PC);
+
+    // 2. Buscamos la instrución en la tabla
     const Instruction* instr = &instruction_set[opcode];
 
+    // 3. Avanzamos PC (consumimos el opcode)
+    gb->cpu.PC++; 
+
+    // 4. Inicializamos los cilos con el valor BASE de la tabla
+    // Si la instrucción es condicional, la función sumará el extra de cilos
+    // a esta variable.
+    gb->cpu.cycles = instr->cycles;
+
+    // 5. Ejecutamos la instrucción
     if (instr->func) {
         // Debug: Imprimir la instrucción que se va a ejecutar
         printf("0x%04X: %s (0x%02X)\n", gb->cpu.PC, instr->name, opcode);
-        
-        // Ejecutar la función asociada a la instrucción
-        gb->cpu.PC++; // Avanzamos PC antes de ejecutar la instrucción
         instr->func(gb);
-
         // Debug: Imprimir el estado de la CPU después de la instrucción
         print_cpu_state(&gb->cpu);
     } else {
@@ -361,8 +377,8 @@ int cpu_step(GameBoy* gb) {
         exit(1);
     }
 
-    // Retornar el número de M-Cycles consumidos
-    return instr->cycles;
+    // 6. Devolvemos el total acumulado para este paso
+    return gb->cpu.cycles;
 }
 
 // Helper para obtener punteros a registros según el índice (0-7)
@@ -425,8 +441,8 @@ void op_nop(GameBoy* gb) {
     (void)gb;
 }
 
-// Función UNIVERSAL para LD r, r'
-// Para las cargas de 8 bits (LD r, r'), el opcode sigue este patrón binario:
+// ---------------- LD r, r --------------------------------
+// Para las cargas de 8 bits (LD r, r), el opcode sigue este patrón binario:
 // 01 ddd sss
 //    ddd: destino (registro o (HL))
 //    sss: fuente (registro o (HL))
@@ -441,88 +457,85 @@ void op_nop(GameBoy* gb) {
 //    110 - (HL)  <- Indica acceso a memoria en la dirección apuntada
 //    111 - A
 void op_ld_r_r(GameBoy* gb) {
-    // 1. Recuperamos el opcode actual
-    // Como PC ya avanzó en el bucle principal, el opcode está en PC - 1 
+    // 1. Recuperamos opcode
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
-    
-    // 2. Extraemos los índices de los registros fuente y destino
-    int src_index = (opcode >> 3) & 0x07; // Bits 5-3
-    int dst_index = opcode & 0x07;        // Bits 2-0
 
-    // 3. Obtenemos punteros a los registros o manejamos (HL)
-    u8* src_ptr = get_register_ptr(&gb->cpu, src_index);
-    u8* dst_ptr = get_register_ptr(&gb->cpu, dst_index);
+    // 2. Extraemos índices (LD dst, src)
+    // Patrón: 01 ddd sss
+    u8 dst_idx = (opcode >> 3) & 0x07;  // Bits 5-3 son DESTINO
+    u8 src_idx = opcode & 0x07;         // Bits 2-0 son ORIGEN
 
-    // 4. Realizamos la operación de carga
-    if (src_ptr && dst_ptr) {
-        // Ambos son registros
-        *src_ptr = *dst_ptr;
-    } 
-    else if (src_ptr && dst_index == 6) {
-        // r2 es (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        *src_ptr = bus_read(gb, hl_addr);
-    } 
-    else if (src_index == 6 && dst_ptr) {
-        // r1 es (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        bus_write(gb, hl_addr, *dst_ptr);
+    // --- FASE 1: LECTURA DEL VALOR (Origen) ---
+    u8 val;
+    if (src_idx == 6) {
+        // Origen es memoria (HL)
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
     }
-
-    // Caso no manejado (debería ser imposible llegar aquí)
-    printf("Error en LD r, r con opcode: 0x%02X\n", opcode);
-    exit(1);
-}
-
-// LD r, n: Load immediate 8-bit value into register r
-void op_ld_r_d8(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
-
-    // 2. Extraemos el índice del registro destino
-    // Formato del opcode: 00 ddd110
-    int reg_index = (opcode >> 3) & 0x07; // Bits 5-3
-
-    // 3. Leemos el valor inmediato de 8 bits desde la memoria
-    u8 immediate_value = bus_read(gb, gb->cpu.PC);
-
-    // 4. Escribimos el valor inmediato en el registro destino
-    u8* reg_ptr = get_register_ptr(&gb->cpu, reg_index);
-    if (reg_ptr && reg_index != 6) {
-        *reg_ptr = immediate_value;
-    } 
-    else if (reg_index == 6) {
-        // Escribimos en (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        bus_write(gb, hl_addr, immediate_value);
-    } 
     else {
-        printf("Error en LD r, n con opcode: 0x%02X\n", opcode);
-        exit(1);
+        // Origen es registro
+        val = *get_register_ptr(&gb->cpu, src_idx);
     }
-    // 5. Avanzamos el PC en 1 byte adicional (ya que leímos n)
-    gb->cpu.PC += 1;
+
+    // --- FASE 2: ESCRITURA DEL VALOR (Destino) ---
+    if (dst_idx == 6) {
+        // Destino es memoria (HL)
+        u16 addr = get_hl(&gb->cpu);
+        bus_write(gb, addr, val);
+    }
+    else {
+        // Destino es registro
+        u8* dest_ptr = get_register_ptr(&gb->cpu, dst_idx);
+        *dest_ptr = val;
+    }
 }
 
-// Cargas de 16 bits (LD rr, d16)
-void op_ld_rr_d16(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
+// ---------------- LD r, d8 -------------------------------
+void op_ld_r_d8(GameBoy* gb) {
+    // 1. Recuperamos el opcode 
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
 
-    // 2. Extraemos el índice del par de registros
-    // Opcode: 00 rr 0001
-    int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
+    // 2. Extraemos destino (Bits 3-5)
+    // Patrón: 00 rrr 110
+    u8 reg_idx = (opcode >> 3) & 0x07;
 
-    // 3. Leemos el valor inmediato de 16 bits desde la memoria (d16)
-    // GameBoy es Little Endian, así que leemos el byte bajo primero y luego el alto
-    u8 low_byte = bus_read(gb, gb->cpu.PC);
-    u8 high_byte = bus_read(gb, gb->cpu.PC + 1);
-    u16 value = (high_byte << 8) | low_byte;
+    // 3. Leemos el valor inmediato (d8)
+    u8 val = bus_read(gb, gb->cpu.PC);
+    gb->cpu.PC++; // ¡Buena práctica! Avanzar el PC justo después de leer
 
-    // 4. Escribimos el valor en el par de registros correspondiente
+    // 4. Escribimos el valor inmediato en  destino
+    if (reg_idx == 6) { 
+        // Escribir en (HL) 
+        u16 addr = get_hl(&gb->cpu);
+        bus_write(gb, addr, val);
+    }
+    else {
+        // Escribir en registro
+        u8* reg = get_register_ptr(&gb->cpu, reg_idx);
+
+        // Un assert o check simple por seguridad
+        if (reg) {
+            *reg = val;
+        }
+    }
+}
+
+// Cargas de 16 bits
+// ----------------- LD rr, d16 ----------------------------
+void op_ld_rr_d16(GameBoy* gb) {
+    // 1. Decodificación (PC apunta al byte siguiente al opcode)
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+
+    // Bits 4-5: Índice del par (0=BC, 1=DE, 2=HL, 3=SP)
+    int reg_pair_index = (opcode >> 4) & 0x03;
+
+    // 2. Lectura de 16 bits
+    u16 value = bus_read16(gb, gb->cpu.PC);
+
+    // 3. Escritura en registro
     write_register_pair(&gb->cpu, reg_pair_index, value);
 
-    // 5. Avanzamos el PC en 2 bytes adicionales (ya que leímos d16)
+    // 4. Avance del PC
     gb->cpu.PC += 2;
 }
 
@@ -539,7 +552,7 @@ void op_ld_addr_rr_a(GameBoy* gb) {
     // 3. Obtenemos la dirección desde el par de registros
     // Caso especial 0x22 y 0x32 (LD (HL+), A y LD (HL-), A)
     if (reg_pair_index == 3) {
-        addr = (gb->cpu.H << 8) | gb->cpu.L;
+        addr = get_hl(&gb->cpu);
     }
     else {
         addr = read_register_pair(&gb->cpu, reg_pair_index);
@@ -575,7 +588,7 @@ void op_ld_a_addr_rr(GameBoy* gb) {
     // 3. Obtenemos la dirección desde el par de registros
     // Caso especial 0x3A, reg_pair_index == 3 devolvería SP, pero queremos HL
     if (reg_pair_index == 3) {
-        addr = (gb->cpu.H << 8) | gb->cpu.L;
+        addr = get_hl(&gb->cpu);
     }
     else {
         addr = read_register_pair(&gb->cpu, reg_pair_index);
@@ -601,92 +614,99 @@ void op_halt(GameBoy* gb) {
     gb->cpu.halted = true;
 }
 
-// INC r: Incrementa registro
+// -------------------------- INC r -------------------------
 void op_inc_r(GameBoy* gb) {
-    // Implementación de la instrucción INC r
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
-
+    // 1. Decodificar registro (3-5)
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 reg_idx = (opcode >> 3) & 0x07;
 
-    // 2. Extraemos el índice del registro
-    // Formato del opcode: 00 ddd100
-    int reg_index = (opcode >> 3) & 0x07; // Bits 5-3
-    u8* reg_ptr = get_register_ptr(&gb->cpu, reg_index);
-    u8 value = 0;
-    
-    // 3. Incrementamos el valor del registro
-    if (reg_ptr && reg_index != 6) {
-        (*reg_ptr)++;
-        value = *reg_ptr;
-    }
-    else if (reg_index == 6) {
-        // Incrementamos el valor en (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        value = bus_read(gb, hl_addr);
-        value++;
-        bus_write(gb, hl_addr, value);
+    // 2. Obtener el valor actual
+    u8 val;
+    u8* reg_ptr = NULL;
+
+    if (reg_idx == 6) { // INC (HL)
+        u16 addr = (gb->cpu.H << 8)| gb->cpu.L;
+        val = bus_read(gb, addr);
     }
     else {
-        printf("Error en INC r con opcode: 0x%02X\n", opcode);
-        exit(1);
+        reg_ptr = get_register_ptr(&gb->cpu, reg_idx);
+        val = *reg_ptr;
     }
-    
-    // 4. Actualizamos los flags
-    // Conservamos el flag C, borramos los otros 3
-    gb->cpu.F = gb->cpu.F & CPU_F_C;
-    
-    // Actualizamos el flag Z
-    gb->cpu.F |= CHECK_ZERO(value);
 
-    // INC pone N a 0
-    gb->cpu.F &= ~CPU_F_N;
+    // 3. Calcular resultado
+    u8 result = val + 1;
 
-    // Actualizamos el flag H
-    gb->cpu.F |= CHECK_HALF_CARRY_ADD(value, 1);
+    // 4. GESTION DE FLAGS
+    // Mantenemos Carry y borramos el resto de flags
+    gb->cpu.F = (gb->cpu.F & FLAG_C);
+
+    // Flag Z
+    gb->cpu.F |= CHECK_ZERO(result);
+
+    // Flag N: Siempre 0 en INC
+    // (No hace falta hacer nada para este flag)
+
+    // Flag H: Half Carry
+    // Ocurre si pasamos de xxx1111 a xx10000.
+    // Es decir, si los 4 bits bajos vaían 15 (0xF)
+    gb->cpu.F |= ((val & 0x0F) == 0x0F) ? FLAG_H : 0;
+
+    // 5. Escribir el resultado
+    if (reg_idx == 6) {
+        u16 addr = get_hl(&gb->cpu);
+        bus_write(gb, addr, result);
+    }
+    else {
+        *reg_ptr = result;
+    }
 }
 
-// DEC r: Decrementa registro
+// -------------------------- DEC r -------------------------
 void op_dec_r(GameBoy* gb) {
-    // Implementación de la instrucción DEC r
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
-
+    // 1. Decodificamos el registro objetivo (Bits 3-5)
+    // Formato del opcode: 00 rrr 101
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
-
-    // 2. Extraemos el índice del registro
-    // Formato del opcode: 00 ddd101
-    int reg_index = (opcode >> 3) & 0x07; // Bits 5-3
-    u8* reg_ptr = get_register_ptr(&gb->cpu, reg_index);
-    u8 value = 0;
+    int reg_idx = (opcode >> 3) & 0x07;
     
-    // 3. Decrementamos el valor del registro
-    if (reg_ptr && reg_index != 6) {
-        (*reg_ptr)--;
-        value = *reg_ptr;
-    }
-    else if (reg_index == 6) {
-        // Decrementamos el valor en (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        value = bus_read(gb, hl_addr);
-        value--;
-        bus_write(gb, hl_addr, value);
+    // 2. Obtenemos el valor actual (target)
+    u8 val;
+    u8* reg_ptr = NULL;
+    
+    if (reg_idx == 6) {
+        // Caso especial (HL): Leemos de memoria
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
     }
     else {
-        printf("Error en DEC r con opcode: 0x%02X\n", opcode);
-        exit(1);
+        // Caso registro directo
+        reg_ptr = get_register_ptr(&gb->cpu, reg_idx);
+        val = *reg_ptr;
     }
-    
-    // 4. Actualizamos los flags
-    // Conservamos el flag C, borramos los otros 3
-    gb->cpu.F = gb->cpu.F & CPU_F_C;
-    
-    // Actualizamos el flag Z
-    gb->cpu.F |= CHECK_ZERO(value);
 
-    // DEC pone N a 1
-    gb->cpu.F |= CPU_F_N;
+    // 3. Calculamos el resultado
+    u8 result = val - 1;
 
-    // Actualizamos el flag H
-    gb->cpu.F |= CHECK_HALF_CARRY_SUB(value, 1);
+    // 4. GESTIÓN DE FLAGS (¡Cuidado aquí!)
+    // Conservamos el flag de C, borramos los otros 3
+    gb->cpu.F = gb->cpu.F & FLAG_C;
+    
+    // Flag Z: Si el resultado es 0
+    gb->cpu.F |= CHECK_ZERO(result);
+
+    // Flag N: Siempre 1 (es una resta)
+    gb->cpu.F |= FLAG_N;
+
+    // Flag H: Half Carry
+    gb->cpu.F |= ((val & 0x0F) == 0) ? FLAG_H : 0;
+    
+    // 5. Escribimos el resultado
+    if (reg_idx == 6) {
+        u16 addr = get_hl(&gb->cpu);
+        bus_write(gb, addr, result);
+    }
+    else {
+        *reg_ptr = result;
+    }
 }
 
 // INC y DEC de pares de registros de 16 bits
@@ -706,215 +726,323 @@ void op_inc_dec_rr(GameBoy* gb) {
     // INC/DEC de pares de registros no afecta flags
 }
 
-// ADD A, r: Suma registro a A
-// ADC A, r (suma con carry) si el bit 3 del opcode está seteado
-// ADD A, d8 si el opcode es 0xC6
-// ADDC A, d8 si el opcode es 0xCE
-void op_add_addc_a_r(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+// Helper interno: Calcula flags para ADD y ADC
+// Sirve para ADD (carry_in=0) y ADC (carry_in=flag_C)
+static void set_add_adc_flags(GameBoy* gb, u8 val, u8 carry_in) {
+    u8 a = gb->cpu.A;
+    // Usamos int (o u16) para capturar el resultado completo (más de 255)
+    int result = a + val + carry_in;
 
-    // 2. Extraemos el índice del registro fuente
-    // Formato del opcode: 10000sss
-    int src_index = opcode & 0x07; // Bits 2-0
-    u8* src_ptr = get_register_ptr(&gb->cpu, src_index);
-
-    // 3. Realizamos la suma
-    u8 value = 0;
-    if (opcode == 0xC6 || opcode == 0xCE) {
-        // ADD A, d8
-        value = bus_read(gb, gb->cpu.PC);
-        gb->cpu.PC += 1; // Avanzamos PC por el byte inmediato
-    }
-    else if (src_ptr && src_index != 6) {
-        value = *src_ptr;
-    }
-    else if (src_index == 6) {
-        // ADD A, (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        value = bus_read(gb, hl_addr);
-    }
-    
-    else {
-        printf("Error en ADD A, r con opcode: 0x%02X\n", opcode);
-        exit(1);
-    }
-
-    if (opcode & 0x08) {
-        // ADDC: sumar con carry
-        value += (gb->cpu.F & CPU_F_C) ? 1 : 0;
-    }
-    u16 result = gb->cpu.A + value;
-    
-    // 4. Actualizamos los flags
+    // Lipiamos flags (ADD/ADC siempre ponen N a 0)
     gb->cpu.F = 0;
+
+    // 1. Zero Flag (Z)
     gb->cpu.F |= CHECK_ZERO(result);
-    gb->cpu.F |= CHECK_HALF_CARRY_ADD(gb->cpu.A, value);
-    gb->cpu.F |= CHECK_CARRY_ADD(gb->cpu.A, value);
 
-    // 5. Almacenamos el resultado en A
-    gb->cpu.A = (u8)(result & 0xFF);
-}   
+    // 2. Substract Flag (N)
+    // Siempre es 0 en sumas. (Ya lo hicimos al limpiar F)
 
-// SUB A, r: Resta registro a A
-// También realiza SBC A, r (resta con carry) si el bit 3 del opcode está seteado
-void op_sub_sbc_a_r(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal
+    // 3. Half Carry (H)
+    gb->cpu.F |= CHECK_HALF_CARRY_ADD(a, val, carry_in);
+
+    // 4. Carry Flag
+    gb->cpu.F |= CHECK_CARRY_ADD(result);
+}
+
+// ------------------------ ADD ----------------------
+
+// ADD A, r (Opcodes 0x80 - 0x87)
+void op_add_a_r(GameBoy* gb) {
+    // 1. Decodificar el registro origen
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 reg_idx = opcode & 0x07; // Bits 0-2
+    u8 val;
 
-    // 2. Extraemos el índice del registro fuente
-    // Formato del opcode: 10010sss
-    int src_index = opcode & 0x07; // Bits 2-0
-    u8* src_ptr = get_register_ptr(&gb->cpu, src_index);
-
-    // 3. Realizamos la resta
-    u8 value = 0;
-    if (src_ptr && src_index != 6) {
-        value = *src_ptr;
-    }
-    else if (src_index == 6) {
-        // Fuente es (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        value = bus_read(gb, hl_addr);
+    if (reg_idx == 6) { // Caso (HL)
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
     }
     else {
-        printf("Error en SUB A, r con opcode: 0x%02X\n", opcode);
-        exit(1);
+        val = *get_register_ptr(&gb->cpu, reg_idx);
     }
-    if (opcode & 0x08) {
-        // SBC: restar con carry
-        value += (gb->cpu.F & CPU_F_C) ? 1 : 0;
-    }
-    u16 result = gb->cpu.A - value;
 
-    // 4. Actualizamos los flags
-    gb->cpu.F = 0;
+    // 2. Calcular flags (Carry in es 0)
+    set_add_adc_flags(gb, val, 0);
+
+    // 3. Ejecutar suma
+    gb->cpu.A += val;
+}
+
+// ADD A, d8 (Opcode 0xC6)
+void op_add_a_d8(GameBoy* gb) {
+    // 1. Leer inmediato
+    u8 val = bus_read(gb, gb->cpu.PC);
+    gb->cpu.PC++; // Avanzar PC por el dato leído
+
+    // 2. Calcular flags
+    set_add_adc_flags(gb, val, 0);
+
+    // 3. Ejecutar suma
+    gb->cpu.A += val;
+}
+
+// ------------------------ ADC ----------------------
+
+// ADC A, r (Opcodes 0x88 - 0x8F)
+void op_adc_a_r(GameBoy* gb) {
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 reg_idx = opcode & 0x07;
+    u8 val;
+
+    if (reg_idx == 6) {
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
+    }
+    else {
+        val = *get_register_ptr(&gb->cpu, reg_idx);
+    }
+
+    // Extraer Carry actual (0 o 1)
+    u8 carry = (gb->cpu.F & FLAG_C) ? 1 : 0;
+
+    // Calcular flags CON carry
+    set_add_adc_flags(gb, val, carry);
+
+    // Ejecutar suma completa
+    gb->cpu.A += val + carry;
+ }
+
+ // ADC A, d8 (Opcode CE)
+ void op_adc_a_d8(GameBoy* gb) {
+    u8 val = bus_read(gb, gb->cpu.PC - 1);
+    gb->cpu.PC++;
+
+    u8 carry = (gb->cpu.F & FLAG_C) ? 1 : 0;
+
+    set_add_adc_flags(gb, val, carry);
+
+    gb->cpu.A += val + carry;
+ }
+
+// Helper interno: Calcula y actualiza flags para una resta (A - val - carry)
+// Sirve para SUB (carry_in=0), CP (carry_in=0) y SBC (carry_in=flag_C)
+static void set_sub_sbc_flags(GameBoy* gb, u8 val, u8 carry_in) {
+    u8 a = gb->cpu.A;
+    // Usamos int para capturar resultados negativos sin overflow
+    int result = a - val - carry_in;
+
+    gb->cpu.F = FLAG_N; // N siempre es 1 en restas
+
+    // 1. Zero Flag
     gb->cpu.F |= CHECK_ZERO(result);
-    gb->cpu.F |= CHECK_HALF_CARRY_SUB(gb->cpu.A, value);
-    gb->cpu.F |= CHECK_CARRY_SUB(gb->cpu.A, value);
-    gb->cpu.F |= CPU_F_N; // Resta pone N a 1
+    
+    // 2. Half Carry (H)
+    gb->cpu.F |= CHECK_HALF_CARRY_SUB(gb->cpu.A, result, carry_in);
 
-    // 5. Almacenamos el resultado en A
-    gb->cpu.A = (u8)(result & 0xFF);
-}  
+    // 3. Carry Flag (C)
+    gb->cpu.F |= CHECK_CARRY_SUB(result);
+}
 
-// AND A, r: AND registro con A
+// ------------------------ SUB ----------------------
+// SUB A, r (Opcodes 0x90 - 0x97)
+void op_sub_a_r(GameBoy* gb) {
+    // 1. Decodificar registro origen
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 reg_idx = opcode & 0x07; // Bits 2-0
+    u8 val;
+
+    if (reg_idx == 6) { // Caso (HL)
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
+    }
+    else {
+        val = *get_register_ptr(&gb->cpu, reg_idx);
+    }
+
+    // 2. Calcular flags (Carry in es 0 para SUB)
+    set_sub_sbc_flags(gb, val, 0);
+
+    // 3. Guardar resultado
+    gb->cpu.A -= val;
+}
+
+// SUB A, d8 (Opcode 0xD6)
+void op_sub_a_d8(GameBoy* gb) {
+    // 1. Leer inmediato
+    u8 val = bus_read(gb, gb->cpu.PC);
+    gb->cpu.PC++; // Avanzamos PC por el dato leído
+
+    // 2. Calcular flags
+    set_sub_sbc_flags(gb, val, 0);
+
+    // 3. Guardar resultado
+    gb->cpu.A -= val;
+}
+
+// ------------------------ SBC -----------------------
+
+// SBC A, r (Opcodes 0x90 - 0x9F)
+void op_sbc_a_r(GameBoy* gb) {
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 reg_idx = opcode & 0x07;
+    u8 val;
+
+    if (reg_idx == 6) {
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
+    }
+    else {
+        val = *get_register_ptr(&gb->cpu, reg_idx);
+    }
+
+    // EXTRAEMOS EL CARRY ACTUAL (0 o 1)
+    u8 carry = gb->cpu.F ? 1 : 0;
+
+    set_sub_sbc_flags(gb, val, carry);
+
+    // Actualizamos el registro A con la resta con acarreo
+    gb->cpu.A = gb->cpu.A - val - carry;
+}
+
+// SBC A, d8 (Opcode 0xDE)
+void op_sbc_a_d8(GameBoy* gb) {
+    u8 val = bus_read(gb, gb->cpu.PC);
+    gb->cpu.PC++;
+
+    u8 carry = gb->cpu.F ? 1 : 0;
+
+    set_sub_sbc_flags(gb, val, carry);
+    gb->cpu.A = gb->cpu.A - val - carry;
+}
+
+// ------------------------- CP -----------------------
+
+// CP A, r (Opcodes 0xB8 - 0xBF)
+void op_cp_a_r(GameBoy* gb) {
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 reg_idx = opcode & 0x07;
+    u8 val;
+
+    if (reg_idx == 6) {
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
+    }
+    else {
+        val = *get_register_ptr(&gb->cpu, reg_idx);
+    }
+
+    // Solo calculamos flags, NO modificamos A
+    set_sub_sbc_flags(gb, val, 0);
+}
+
+// CP A, d8 (Opcode 0xFE)
+void op_cp_a_d8(GameBoy* gb) {
+    u8 val = bus_read(gb, gb->cpu.PC);
+    gb->cpu.PC++;
+
+    set_sub_sbc_flags(gb, val, 0);
+}
+
+// Helper para AND, OR, XOR
+// h_flag: 1 para AND, 0 para OR/XOR
+static void set_logic_op_flags(GameBoy* gb, bool h_flag) {
+    gb->cpu.F = 0; // N=0, C=0 siempre en estas ops
+
+    // Flag Z: Se calcula sobre el registro A (que ya tiene el resultado)
+    gb->cpu.F |= CHECK_ZERO(gb->cpu.A);
+
+    // Flag H: Depende de la instrucción
+    gb->cpu.F |= h_flag;
+}
+
+// ------------------------- AND ------------------------
 void op_and_a_r(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
+    // 1. Fetch
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 reg_idx = opcode & 0x07;
+    u8 val;
 
-    // 2. Extraemos el índice del registro fuente
-    // Formato del opcode: 10100sss
-    int src_index = opcode & 0x07; // Bits 2-0
-    u8* src_ptr = get_register_ptr(&gb->cpu, src_index);
-
-    // 3. Obtenemos el segundo operando
-    u8 value = 0;
-    if (opcode == 0xE6) {
-        // AND A, d8
-        value = bus_read(gb, gb->cpu.PC);
-        gb->cpu.PC += 1; // Avanzamos PC por el byte inmediato
-    }
-    else if (src_ptr && src_index != 6) {
-        value = *src_ptr;
-    }
-    else if (src_index == 6) {
-        // AND A, (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        value = bus_read(gb, hl_addr);
-        printf("HL Address: 0x%04X, Value: 0x%02X\n", hl_addr, value);
+    if (reg_idx == 6) {
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
     }
     else {
-        printf("Error en AND A, r con opcode: 0x%02X\n", opcode);
-        exit(1);
+        val = *get_register_ptr(&gb->cpu, reg_idx);
     }
 
-    // 4 Realizamos la operación AND
-    gb->cpu.A &= value;
+    // 2. Operación
+    gb->cpu.A &= val;
 
-    // 5. Actualizamos los flags
-    gb->cpu.F = CPU_F_H; // AND siempre pone H a 1
-    gb->cpu.F |= CHECK_ZERO(gb->cpu.A);
+    // 3. Flags (AND pone H a 1)
+    set_logic_op_flags(gb, FLAG_H);
 }
 
-// XOR A, r: XOR registro con A
-// XOR A, d8 si el opcode es 0xEE
-// XOR A, (HL) si el registro fuente es b110
-void op_xor_a_r(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
-    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+void op_and_a_d8(GameBoy* gb) {
+    u8 val = bus_read(gb, gb->cpu.PC);
+    gb->cpu.PC++;
 
-    // 2. Extraemos el índice del registro fuente
-    // Formato del opcode: 10101sss
-    int src_index = opcode & 0x07; // Bits 2-0
-    u8* src_ptr = get_register_ptr(&gb->cpu, src_index);
-
-    // 3. Obtenemos el segundo operando
-    u8 value = 0;
-    if (opcode == 0xEE) {
-        // XOR A, d8
-        value = bus_read(gb, gb->cpu.PC);
-        gb->cpu.PC += 1; // Avanzamos PC por el byte inmediato
-    }
-    else if (src_ptr && src_index != 6) {
-        value = *src_ptr;
-    }
-    else if (src_index == 6) {
-        // XOR A, (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        value = bus_read(gb, hl_addr);
-    }
-    else {
-        printf("Error en XOR A, r con opcode: 0x%02X\n", opcode);
-        exit(1);
-    }
-
-    // 4 Realizamos la operación XOR
-    gb->cpu.A ^= value;
-
-    // 5. Actualizamos los flags
-    gb->cpu.F = 0; // XOR borra todos los flags
-    gb->cpu.F |= CHECK_ZERO(gb->cpu.A);
+    gb->cpu.A &= val;
+    set_logic_op_flags(gb, FLAG_H);
 }
 
-// OR A, r: OR registro con A
-// OR A, d8 si el opcode es 0xF6
-// OR A, (HL) si el registro fuente es b110
+// ------------------------- OR ------------------------
 void op_or_a_r(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
+    // 1. Fetch
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 reg_idx = opcode & 0x07;
+    u8 val;
 
-    // 2. Extraemos el índice del registro fuente
-    // Formato del opcode: 10101sss
-    int src_index = opcode & 0x07; // Bits 2-0
-    u8* src_ptr = get_register_ptr(&gb->cpu, src_index);
-
-    // 3. Obtenemos el segundo operando
-    u8 value = 0;
-    if (opcode == 0xF6) {
-        // OR A, d8
-        value = bus_read(gb, gb->cpu.PC);
-        gb->cpu.PC += 1; // Avanzamos PC por el byte inmediato
-    }
-    else if (src_ptr && src_index != 6) {
-        value = *src_ptr;
-    }
-    else if (src_index == 6) {
-        // OR A, (HL)
-        u16 hl_addr = (gb->cpu.H << 8) | gb->cpu.L;
-        value = bus_read(gb, hl_addr);
+    if (reg_idx == 6) {
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
     }
     else {
-        printf("Error en OR A, r con opcode: 0x%02X\n", opcode);
-        exit(1);
+        val = *get_register_ptr(&gb->cpu, reg_idx);
     }
 
-    // 4 Realizamos la operación OR
-    gb->cpu.A |= value;
+    // 2. Operación
+    gb->cpu.A |= val;
 
-    // 5. Actualizamos los flags
-    gb->cpu.F = 0; // OR borra todos los flags
-    gb->cpu.F |= CHECK_ZERO(gb->cpu.A);
+    // 3. Flags (AND pone H a 1)
+    set_logic_op_flags(gb, 0);
+}
+
+void op_or_a_d8(GameBoy* gb) {
+    u8 val = bus_read(gb, gb->cpu.PC);
+    gb->cpu.PC++;
+
+    gb->cpu.A |= val;
+    set_logic_op_flags(gb, 0);
+}
+
+// ------------------------- XOR ------------------------
+void op_xor_a_r(GameBoy* gb) {
+    // 1. Fetch
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    u8 reg_idx = opcode & 0x07;
+    u8 val;
+
+    if (reg_idx == 6) {
+        u16 addr = get_hl(&gb->cpu);
+        val = bus_read(gb, addr);
+    }
+    else {
+        val = *get_register_ptr(&gb->cpu, reg_idx);
+    }
+
+    // 2. Operación
+    gb->cpu.A ^= val;
+
+    // 3. Flags (AND pone H a 1)
+    set_logic_op_flags(gb, 0);
+}
+
+void op_xor_a_d8(GameBoy* gb) {
+    u8 val = bus_read(gb, gb->cpu.PC);
+    gb->cpu.PC++;
+
+    gb->cpu.A ^= val;
+    set_logic_op_flags(gb, 0);
 }
 
 // INC rr: Incrementa par de registros
@@ -934,58 +1062,191 @@ void op_inc_rr(GameBoy* gb) {
     // INC rr no afecta a los flags
 }
 
-// PUSH rr: Empuja par de registros a la pila
+// --------------------- PUSH rr -------------------------
 void op_push_rr(GameBoy* gb) {
     // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
-    u16 value = 0;
 
-    // 2. Extraemos el índice del par de registros
-    // Formato del opcode: 11 rr 0101
-    int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
-    
-    if (reg_pair_index == 3) {
-        // PUSH AF, en este caso reg_pair_index 3 indica AF
-        // F solo usa los 4 bits altos
-        value = ((u16)gb->cpu.A << 8) | (gb->cpu.F & 0xF0); 
+    // Bits 4-5 determinan el par: 00=BC, 01=DE, 10=HL, 11=AF
+    int reg_pair_idx = (opcode >> 4) & 0x03;
+
+    u16 value;
+
+    // 2. Obtener el valor del registro (Manejando el caso especial AF)
+    if (reg_pair_idx == 3) {
+        // Caso especial: PUSH AF
+        // Combinamos A (Alto) y F (Bajo)
+        value = (gb->cpu.A << 8) | gb->cpu.F; 
     }
     else {
-        value = read_register_pair(&gb->cpu, reg_pair_index);
+        // Casos normales: BC, DE, HL
+        value = read_register_pair(&gb->cpu, reg_pair_idx);
     }
     
-    // Decrementamos SP y escribimos el byte alto
+    // 3. Escribir en la Pila (PUSH)
+    // Orden: Primero HIGH byte, luego LOW byte. SP decrementa ANTES de escribir
+    
+    // Paso 1: Byte Alto
     gb->cpu.SP--;
     bus_write(gb, gb->cpu.SP, (value >> 8) & 0xFF);
-    // Decrementamos SP y escribimos el byte bajo
+
+    // Paso 2: Byte Bajo
     gb->cpu.SP--;
     bus_write(gb, gb->cpu.SP, value & 0xFF);
 }
 
-// POP rr: Extrae par de registros de la pila
+// --------------------- POP -----------------------------
 void op_pop_rr(GameBoy* gb) {
-    // 1. Recuperamos el opcode (PC ya avanzó en el bucle principal)
+    // 1. Decodificar
     u8 opcode = bus_read(gb, gb->cpu.PC - 1);
-    u16 value = 0;
-
-    // 2. Extraemos el índice del par de registros
-    // Formato del opcode: 11 rr 0001
-    int reg_pair_index = (opcode >> 4) & 0x03; // Bits 5-4
+    int reg_pair_idx = (opcode >> 4) & 0x03;
     
-    // Leemos el byte bajo desde la pila
-    value = bus_read(gb, gb->cpu.SP);
+    // 2. Leer de la Pila (POP)
+    // Orden inverso a PUSH: Primero LOW byte, luego HIGH byte.
+
+    // Paso 1: Byte Bajo
+    u8 lo = bus_read(gb, gb->cpu.SP);
     gb->cpu.SP++;
-    // Leemos el byte alto desde la pila
-    value |= ((u16)bus_read(gb, gb->cpu.SP) << 8);
+    
+    // Paso 2: Byte Alto
+    u8 hi = bus_read(gb, gb->cpu.SP);
     gb->cpu.SP++;
 
-    if (reg_pair_index == 3) {
-        // POP AF, en este caso reg_pair_index 3 indica AF
-        gb->cpu.A = (value >> 8) & 0xFF;
-        gb->cpu.F = value & 0xF0; // F solo usa los 4 bits altos
+    u16 value = (hi << 8)| lo;
+
+    // 3. Escribir en el registro destino
+    if (reg_pair_idx == 3) {
+        // --- CASO ESPECIAL: POP AF ---
+        gb->cpu.A = (value >> 8) & 0xFF; // Byte Alto -> A
+
+        // ¡CRÍTICO! El registro F tiene los 4 bits bajos SIEMPRE a 0.
+        gb->cpu.F = value & 0xF0;
     }
     else {
-        write_register_pair(&gb->cpu, reg_pair_index, value);
+        // --- CASO NORMAL: BC, DE, HL ---
+        write_register_pair(&gb->cpu, reg_pair_idx, value);
     }
 }
 
-// Resto de instrucciones
+// ---------------------- JP -----------------------------
+// Las instrucciones condicionales (JP NZ, CALL Z, etc.) 
+// usan siempre los bits 3 y 4 del opcode para indicar la condición
+// 00: NZ (Not Zero)
+// 01: Z  (Zero)
+// 10: NC (Not Carry)
+// 11: C  (Carry)
+
+// Helper interno: Devuelve true si la condición se cumple
+bool check_condition(GameBoy* gb, int condition_code) {
+    u8 f = gb->cpu.F;
+    switch (condition_code) {
+        case 0: return !(f & FLAG_Z); // NZ (Not Zero)
+        case 1: return (f & FLAG_Z);  // Z  (Zero)
+        case 2: return !(f & FLAG_C); // NC (Not Carry)
+        case 3: return (f & FLAG_C);  // C  (Carry)
+    }
+    return false;
+}
+
+// ------------------- JP nn (Incondicional) -----------------
+void op_jp_nn(GameBoy* gb) {
+    // 1. Leemos la dirección destino
+    u16 target_addr = bus_read16(gb, gb->cpu.PC);
+
+    // 2. Saltamos (sobreescribimos PC)
+    gb->cpu.PC = target_addr;
+}
+
+// ---------------- JP cc, nn (Condicional) ------------------
+void op_jp_cc_nn(GameBoy* gb) {
+    u8 opcode = bus_read(gb, gb->cpu.PC);
+    int cond = (opcode >> 3) && 0x03; // Bits 3-4
+
+    // Siempre leemos los argumentos para avanzar el PC correctamente
+    // si la condición NO se cumple.
+    u16 target_addr = bus_read16(gb, gb->cpu.PC);
+    gb->cpu.PC += 2; // Avanzamos por defecto (como si no saltáramos)
+
+    if (check_condition(gb, cond)) {
+        gb->cpu.PC = target_addr; // Si se cumple, saltamos
+        gb->cpu.cycles += 1; // Coste extra si se toma el salto
+    }
+}
+
+// ------------------- JP (HL) -> Opcode 0xE9 --------------------
+// ¡CUIDADO! No lee memoria, salta a la dirección que conitene HL.
+void op_jp_hl(GameBoy* gb) {
+    u16 hl = get_hl(&gb->cpu);
+    gb->cpu.PC = hl;
+}
+
+// ------------------------- JR ----------------------------------
+// Usa un desplazamiento con signo de 8 bits (int8_t).
+// Rango del salto: -128 a +127 bytes.
+
+// Helper genérico para JR
+void op_jr_common(GameBoy* gb, bool jump_taken) {
+    // 1. Leemos el offset como SIGNED int8
+    // Es vital el cast a (int8_t) para que C entienda que 0xFF es -1.
+    int8_t offset = (int8_t)bus_read(gb, gb->cpu.PC);
+    gb->cpu.PC++; // Consumimos el byte del offset
+
+    if (jump_taken) {
+        gb->cpu.PC += offset; // Suma con signo (puede restar)
+        gb->cpu.cycles += 1; // Coste extra si se toma el salto
+    }
+}
+
+// --------------------- JR e (Incondicional) -----------------------
+void op_jr_e(GameBoy* gb) {
+    op_jr_common(gb, true);
+}
+
+// -------------------- JR cc, e (Condicional) -----------------------
+// Opcodes 0x20, 0x28, 0x30, 0x38
+void op_jr_cc_e(GameBoy* gb) {
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    int cond = (opcode >> 3) & 0x03;
+
+    op_jr_common(gb, check_condition(gb, cond));
+}
+
+// ------------------------- CALL ----------------------------------
+
+// Helper para guardar el PC actual en la pila
+void push_pc(GameBoy* gb) {
+    u16 return_addr = gb->cpu.PC;
+
+    gb->cpu.SP--;
+    u8 hi = (return_addr >> 8) & 0xFF;
+    bus_write(gb, gb->cpu.SP, hi);
+
+    u8 lo = (return_addr & 0xFF);
+    bus_write(gb, gb->cpu.SP, lo);
+}
+
+// ------------------- CALL nn (Incondicional ) ---------------------
+// Opcode 0xCD
+void op_call_nn(GameBoy* gb) {
+    u16 target_addr = bus_read16(gb, gb->cpu.PC);
+    gb->cpu.PC += 2; // El PC ahora apunta a la instrucción SIGUIENTE (Retorno)
+
+    push_pc(gb);    // Guardamos esta dirección de retorno
+    gb->cpu.PC = target_addr; // Saltamos
+}
+
+// ------------------- CALL cc, nn (Condicional) ---------------------
+// Opcodes 0cC4, 0xCC, 0xD4, 0xDC
+void op_call_cc_nn(GameBoy* gb) {
+    u8 opcode = bus_read(gb, gb->cpu.PC - 1);
+    int cond = (opcode >> 3) & 0x03;
+
+    u16 target_adddr = bus_read16(gb, gb->cpu.PC);
+    gb->cpu.PC += 2; // Preparamos el PC para continuar si NO saltamos
+
+    if (check_condition(gb, cond)) {
+        push_pc(gb); // Solo hacemos PUSH si la condición se cumple
+        gb->cpu.PC = target_adddr;
+        gb->cpu.cycles += 3; // Coste extra si se toma el salto
+    }
+}
