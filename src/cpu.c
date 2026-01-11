@@ -22,6 +22,11 @@ void op_halt(GameBoy* gb);
 void op_inc_r(GameBoy* gb);
 void op_dec_r(GameBoy* gb);
 
+void op_rlca(GameBoy* gb);
+void op_rrca(GameBoy* gb);
+void op_rla(GameBoy* gb);
+void op_rra(GameBoy* gb);
+
 void op_add_a_r(GameBoy* gb);
 void op_add_a_d8(GameBoy* gb);
 void op_adc_a_r(GameBoy* gb);
@@ -66,7 +71,7 @@ Instruction instruction_set[256] = {
     [0x04] = { .func = op_inc_r, .name = "INC B", .cycles = 1, .length = 1 },
     [0x05] = { .func = op_dec_r, .name = "DEC B", .cycles = 1, .length = 1 },
     [0x06] = { .func = op_ld_r_d8, .name = "LD B,d8", .cycles = 2, .length = 2 },
-    [0x07] = { .func = NULL, .name = "RLCA", .cycles = 1, .length = 1 },
+    [0x07] = { .func = op_rlca, .name = "RLCA", .cycles = 1, .length = 1 },
     [0x08] = { .func = NULL, .name = "LD (a16),SP", .cycles = 5, .length = 3 },
     [0x09] = { .func = NULL, .name = "ADD HL,BC", .cycles = 2, .length = 1 },
     [0x0A] = { .func = op_ld_a_addr_rr, .name = "LD A,(BC)", .cycles = 2, .length = 1 },
@@ -74,7 +79,7 @@ Instruction instruction_set[256] = {
     [0x0C] = { .func = op_inc_r, .name = "INC C", .cycles = 1, .length = 1 },
     [0x0D] = { .func = op_dec_r, .name = "DEC C", .cycles = 1, .length = 1 },
     [0x0E] = { .func = op_ld_r_d8, .name = "LD C,d8", .cycles = 2, .length = 2 },
-    [0x0F] = { .func = NULL, .name = "RRCA", .cycles = 1, .length = 1 },
+    [0x0F] = { .func = op_rrca, .name = "RRCA", .cycles = 1, .length = 1 },
     [0x10] = { .func = NULL, .name = "STOP", .cycles = 2, .length = 2 },
     [0x11] = { .func = op_ld_rr_d16, .name = "LD DE,d16", .cycles = 3, .length = 3 },
     [0x12] = { .func = op_ld_addr_rr_a, .name = "LD (DE),A", .cycles = 2, .length = 1 },
@@ -82,7 +87,7 @@ Instruction instruction_set[256] = {
     [0x14] = { .func = op_inc_r, .name = "INC D", .cycles = 1, .length = 1 },
     [0x15] = { .func = op_dec_r, .name = "DEC D", .cycles = 1, .length = 1 },
     [0x16] = { .func = op_ld_r_d8, .name = "LD D,d8", .cycles = 2, .length = 2 },
-    [0x17] = { .func = NULL, .name = "RLA", .cycles = 1, .length = 1 },
+    [0x17] = { .func = op_rla, .name = "RLA", .cycles = 1, .length = 1 },
     [0x18] = { .func = op_jr_e, .name = "JR r8", .cycles = 3, .length = 2 },
     [0x19] = { .func = NULL, .name = "ADD HL,DE", .cycles = 2, .length = 1 },
     [0x1A] = { .func = op_ld_a_addr_rr, .name = "LD A,(DE)", .cycles = 2, .length = 1 },
@@ -90,7 +95,7 @@ Instruction instruction_set[256] = {
     [0x1C] = { .func = op_inc_r, .name = "INC E", .cycles = 1, .length = 1 },
     [0x1D] = { .func= op_dec_r, .name = "DEC E", .cycles = 1, .length = 1 },
     [0x1E] = { .func= op_ld_r_d8, .name = "LD E,d8", .cycles = 2, .length = 2 },
-    [0x1F] = { .func= NULL, .name = "RRA", .cycles = 1, .length = 1 },
+    [0x1F] = { .func= op_rra, .name = "RRA", .cycles = 1, .length = 1 },
     [0x20] = { .func = op_jr_cc_e, .name = "JR NZ,r8", .cycles = 2, .length = 2 },
     [0x21] = { .func = op_ld_rr_d16, .name = "LD HL,d16", .cycles = 3, .length = 3 },
     [0x22] = { .func = op_ld_addr_rr_a, .name = "LD (HL+),A", .cycles = 2, .length = 1 },
@@ -857,6 +862,75 @@ void op_dec_rr(GameBoy* gb) {
     val--;
 
     write_register_pair(&gb->cpu, reg_idx, val);
+}
+
+// =============================================================
+// ROTACIONES DE ACUMULADOR (Z siempre es 0)
+// =============================================================
+
+// --------------------------- RLCA ----------------------------
+// Rotate Left Circular Accumulator - Opcode 0x07
+// Bit 7 -> Carry Y Bit 0
+void op_rlca(GameBoy* gb) {
+    u8 a = gb->cpu.a;
+    u8 bit7 = (a >> 7) & 1; // Extraemos el bit que sale
+
+    // Rotamos y metemos el bit 7 en la posición 0
+    gb->cpu.a = (a << 1) | bit7;
+
+    // FLAGS:
+    // Z: Siempre 0 (Diferencia clave con CB RLC)
+    // N: 0, H: 0
+    // C: Copia del bit 7
+    gb->cpu.f = 0;
+    if (bit7) gb->cpu.f |= FLAG_C;
+}
+
+// --------------------------- RRCA ----------------------------
+// Rotate Right Circular Accumulator - Opcode 0x0F
+// Bit 0 -> Carry Y Bit 7
+void op_rrca(GameBoy* gb) {
+    u8 a = gb->cpu.a;
+    u8 bit0 = a & 1; // Extraemos el bit que sale
+
+    // Rotamos y metemos el bit 0 en la posición 7
+    gb->cpu.a = (a >> 1) | (bit0 << 7);
+
+    // FLAGS. Z=0, N=0, C=bit0
+    gb->cpu.f = 0;
+    if (bit0) gb->cpu.f |= FLAG_C;
+}
+
+// ---------------------------  RLA ----------------------------
+// Rotate Left Accumulator through Carry - Opcode 0x17
+// Carry antiguo -> Bit 0, Bit 7 -> Nuevo Carry
+void op_rla(GameBoy* gb) {
+    u8 a = gb->cpu.a;
+    u8 bit7 = (a >> 7) & 1; // Lo que será el nuevo Carry
+    u8 old_carry = (gb->cpu.f & FLAG_C) ? 1 : 0; // Lo que entra
+
+    // Rotamos e inyectamos el carry antiguo
+    gb->cpu.a = (a << 1) | old_carry;
+
+    // FLAGS: Z=0, N=0, H=0, C=bit7
+    gb->cpu.f = 0;
+    if (bit7) gb->cpu.f |= FLAG_C;
+}
+
+// ---------------------------  RRA ----------------------------
+// Rotate Right Accumulator through Carry - Opcode 0x1F
+// Carry antiguo -> Bit 7, Bit 0 -> Nuevo Carry
+void op_rra(GameBoy* gb) {
+    u8 a = gb->cpu.a;
+    u8 bit0 = a & 1; // Lo que será el nuevo Carry
+    u8 old_carry = (gb->cpu.f & FLAG_C) ? 1 : 0; // Lo que entra
+
+    // Rotamos e inyectamos el carry antiguo en la posición 7
+    gb->cpu.a = (a >> 1) | (old_carry << 7);
+
+    // FLAGS: Z=0, N=0, H=0, C=bit0
+    gb->cpu.f = 0;
+    if (bit0) gb->cpu.f |= FLAG_C;
 }
 
 // Helper interno: Calcula flags para ADD y ADC
