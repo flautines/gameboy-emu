@@ -16,6 +16,7 @@ void op_nop(GameBoy* gb);
 void op_ld_r_r(GameBoy* gb);
 void op_ld_r_d8(GameBoy* gb);
 void op_ld_rr_d16(GameBoy* gb);
+void op_ld_a16_sp(GameBoy* gb);
 
 void op_halt(GameBoy* gb);
 
@@ -72,7 +73,7 @@ Instruction instruction_set[256] = {
     [0x05] = { .func = op_dec_r, .name = "DEC B", .cycles = 1, .length = 1 },
     [0x06] = { .func = op_ld_r_d8, .name = "LD B,d8", .cycles = 2, .length = 2 },
     [0x07] = { .func = op_rlca, .name = "RLCA", .cycles = 1, .length = 1 },
-    [0x08] = { .func = NULL, .name = "LD (a16),SP", .cycles = 5, .length = 3 },
+    [0x08] = { .func = op_ld_a16_sp, .name = "LD (a16),SP", .cycles = 5, .length = 3 },
     [0x09] = { .func = NULL, .name = "ADD HL,BC", .cycles = 2, .length = 1 },
     [0x0A] = { .func = op_ld_a_addr_rr, .name = "LD A,(BC)", .cycles = 2, .length = 1 },
     [0x0B] = { .func = op_dec_rr, .name = "DEC BC", .cycles = 2, .length = 1 },
@@ -704,6 +705,22 @@ void op_ld_a_addr_rr(GameBoy* gb) {
 
     // 4. Lectura de memoria hacia el registro A
     gb->cpu.a = bus_read(gb, addr);
+}
+
+//  ------------------- LD (a16),SP --------------------------------
+// Opcode 0x08
+void op_ld_a16_sp(GameBoy* gb) {
+    // 1. Leemos la dirección donde queremos guardar el SP
+    // (bbus_read16 lee PC y PC+1 correspondiente en Little Endian)
+    u16 addr = bus_read16(gb, gb->cpu.pc);
+
+    // 2. Avanzamos el PC
+    // Hemos consumido 2 bytes de operandos (la dirección a16).
+    // así que debemos saltarlos.
+    gb->cpu.pc += 2;
+
+    // 3. Guardamos SP en esa dirección
+    bus_write16(gb, addr, gb->cpu.sp);
 }
 
 // ------------------- HALT ----------------------------------------

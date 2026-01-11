@@ -29,5 +29,6 @@ u8 bus_read(GameBoy* gb, u16 address);
 void bus_write(GameBoy* gb, u16 address, u8 value);
 
 u16 bus_read16(GameBoy* gb, u16 address);
+void bus_write16(GameBoy* gb, u16 addr, u16 value);
 
 #endif

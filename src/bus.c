@@ -118,6 +118,15 @@ void bus_write(GameBoy* gb, u16 address, u8 value) {
     else if (address == 0xFFFF) {
         // Escritura en IE
         gb->cpu.ie = value; 
-    }
-    
+    } 
+}
+
+void bus_write16(GameBoy* gb, u16 addr, u16 value) {
+    // Parte Baja
+    u8 lo = (value & 0x00FF);
+    bus_write(gb, addr, lo);
+
+    // Parte Alta
+    u8 hi = (value >> 8);
+    bus_write(gb, addr + 1, hi);  
 }
