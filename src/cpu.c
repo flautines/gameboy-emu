@@ -28,6 +28,7 @@ void op_rrca(GameBoy* gb);
 void op_rla(GameBoy* gb);
 void op_rra(GameBoy* gb);
 
+void op_daa(GameBoy* gb);
 void op_scf(GameBoy* gb);
 void op_ccf(GameBoy* gb);
 
@@ -111,7 +112,7 @@ Instruction instruction_set[256] = {
     [0x24] = { .func = op_inc_r, .name = "INC H", .cycles = 1, .length = 1 },
     [0x25] = { .func = op_dec_r, .name = "DEC H", .cycles = 1, .length = 1 },
     [0x26] = { .func = op_ld_r_d8, .name = "LD H,d8", .cycles = 2, .length = 2 },
-    [0x27] = { .func = NULL, .name = "DAA", .cycles = 1, .length = 1 },
+    [0x27] = { .func = op_daa, .name = "DAA", .cycles = 1, .length = 1 },
     [0x28] = { .func = op_jr_cc_e, .name = "JR Z,r8", .cycles = 2, .length = 2 },
     [0x29] = { .func = op_add_hl_rr, .name = "ADD HL,HL", .cycles = 2, .length = 1 },
     [0x2A] = { .func = op_ld_a_addr_rr, .name = "LD A,(HL+)", .cycles = 2, .length = 1 },
@@ -1042,6 +1043,63 @@ void op_ccf(GameBoy* gb) {
     gb->cpu.f &= ~FLAG_H;
 }
 
+// --------------------------- DAA ----------------------------
+// Decimal Adjust Acumulator - Opcode 0x27
+void op_daa(GameBoy* gb) {
+    u8 a = gb->cpu.a;
+    u16 correction = 0; // Usamos u16 para detectar overflows si fuera necesario
+
+    bool flag_n = gb->cpu.f & FLAG_N;
+    bool flag_h = gb->cpu.f & FLAG_H;
+    bool flag_c = gb->cpu.f & FLAG_C;
+
+    // 1. Determinar la corrección necesaria
+    // -------------------------------------
+
+    // CASO A: Ajuste del nibble BAJO (digitos 0-9)
+    // Si hubo Half Carry o el nibble bajo es mayor que 9, sumamos 6.
+    // (Ej: 0x0A + 0x06 = 0x10 -> Se "pasa" el 1 al nibble alto)
+    if (flag_h || (!flag_n && (a & 0x0F) > 9)) {
+        correction |= 0x06;
+    }
+
+    // CASE B: Ajuste del nibble ALTO (digitos 0-90)
+    // Si hubo Carry o el número total es > 0x99, sumamos 60.
+    if (flag_c || (!flag_n && a > 0x99)) {
+        correction |= 0x60;
+
+        // DAA activa el Carry permanentemente si hubo correción alta
+        flag_c = true;
+    }
+
+    // 2. Aplicar la corrección
+    // -------------------------------------
+    if (flag_n) {
+        // Si la operación anterior fue RESTA, restamos la corrección
+        gb->cpu.a -= correction;
+    }
+    else {
+        // Si fue SUMA, sumamos la corrección
+        gb->cpu.a += correction;
+    }
+
+    // 3. Actualizar Flags
+    // ---------------------------------------
+
+
+    // Flag Z: Se actualiza según el nuevo valor de A
+    if (gb->cpu.a == 0) gb->cpu.f |= FLAG_Z;
+    else gb->cpu.f &= ~FLAG_Z;
+
+    // Flag H: DAA siempre limpia el flag H
+    gb->cpu.f &= ~FLAG_H;
+
+    // Flag C: Se actualiza según la lógica calculada en el caso B
+    if (flag_c) gb->cpu.f |= FLAG_C;
+    else gb->cpu.f &= ~FLAG_C;
+
+    // Flag N: NO se toca (se mantiene el valor que tenía)
+}
 // ===============================================================
 //                        INSTRUCCIONES ALU
 // ===============================================================
