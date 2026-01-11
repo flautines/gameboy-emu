@@ -28,6 +28,9 @@ void op_rrca(GameBoy* gb);
 void op_rla(GameBoy* gb);
 void op_rra(GameBoy* gb);
 
+void op_scf(GameBoy* gb);
+void op_ccf(GameBoy* gb);
+
 void op_add_a_r(GameBoy* gb);
 void op_add_a_d8(GameBoy* gb);
 void op_adc_a_r(GameBoy* gb);
@@ -123,7 +126,7 @@ Instruction instruction_set[256] = {
     [0x34] = { .func = op_inc_r, .name = "INC (HL)", .cycles = 3, .length = 1 },
     [0x35] = { .func = op_dec_r, .name = "DEC (HL)", .cycles = 3, .length = 1 },
     [0x36] = { .func = op_ld_r_d8, .name = "LD (HL),d8", .cycles = 3, .length = 2 },
-    [0x37] = { .func = NULL, .name = "SCF", .cycles = 1, .length = 1 },
+    [0x37] = { .func = op_scf, .name = "SCF", .cycles = 1, .length = 1 },
     [0x38] = { .func = op_jr_cc_e, .name = "JR C,r8", .cycles = 2, .length = 2 },
     [0x39] = { .func = op_add_hl_rr, .name = "ADD HL,SP", .cycles = 2, .length = 1 },
     [0x3A] = { .func = op_ld_a_addr_rr, .name = "LD A,(HL-)", .cycles = 2, .length = 1 },
@@ -131,7 +134,7 @@ Instruction instruction_set[256] = {
     [0x3C] = { .func = op_inc_r, .name = "INC A", .cycles = 1, .length = 1 },
     [0x3D] = { .func= op_dec_r, .name= "DEC A", .cycles = 1, .length = 1 },
     [0x3E] = { .func= op_ld_r_d8, .name= "LD A,d8", .cycles = 2, .length = 2 },
-    [0x3F] = { .func= NULL, .name= "CCF", .cycles = 1, .length = 1 },
+    [0x3F] = { .func= op_ccf, .name= "CCF", .cycles = 1, .length = 1 },
     [0x40] = { .func = op_ld_r_r, .name = "LD B,B", .cycles = 1, .length = 1 },
     [0x41] = { .func = op_ld_r_r, .name = "LD B,C", .cycles = 1, .length = 1 },
     [0x42] = { .func = op_ld_r_r, .name = "LD B,D", .cycles = 1, .length = 1 },
@@ -388,7 +391,7 @@ int cpu_step(GameBoy* gb) {
         // y Video NO deben recibir actualizaciones de tiempo.
         return 0;
     }
-    
+
     // Si estamos en HALT, no ejecutamos nada, solo consumimos tiempo
     if (gb->cpu.halted) {
         // CPU dormida, consume 1 M-Cycle por paso
@@ -1016,6 +1019,31 @@ void op_rra(GameBoy* gb) {
     if (bit0) gb->cpu.f |= FLAG_C;
 }
 
+// --------------------------- SCF ----------------------------
+// Set Carry Flag - Opcode 0x37
+void op_scf(GameBoy* gb) {
+    // 1. Poner Carry a 1
+    gb->cpu.f |= FLAG_C;
+
+    // 2. N y H siempre a 0
+    gb->cpu.f &= ~FLAG_N;
+    gb->cpu.f &= ~FLAG_H;
+}
+
+// --------------------------- CCF ----------------------------
+// Complement Carry Flag - Opcode 0x3F
+void op_ccf(GameBoy* gb) {
+    // 1. Invertir Carry (XOR es la forma más rápida de hacer toggle)
+    gb->cpu.f ^= FLAG_C;
+
+    // 2. N y H siempre a 0
+    gb->cpu.f &= ~FLAG_N;
+    gb->cpu.f &= ~FLAG_H;
+}
+
+// ===============================================================
+//                        INSTRUCCIONES ALU
+// ===============================================================
 // Helper interno: Calcula flags para ADD y ADC
 // Sirve para ADD (carry_in=0) y ADC (carry_in=flag_C)
 static void set_add_adc_flags(GameBoy* gb, u8 val, u8 carry_in) {
