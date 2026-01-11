@@ -66,6 +66,7 @@ void op_call_cc_nn(GameBoy* gb);
 void op_ret(GameBoy* gb);
 void op_ret_cc(GameBoy* gb);
 void op_reti(GameBoy* gb);
+void op_rst(GameBoy* gb);
 
 void op_stop(GameBoy* gb);
 
@@ -270,7 +271,7 @@ Instruction instruction_set[256] = {
     [0xC4] = { .func = op_call_cc_nn, .name = "CALL NZ,a16", .cycles = 3, .length = 3 },
     [0xC5] = { .func = op_push_rr, .name = "PUSH BC", .cycles = 4, .length = 1 },
     [0xC6] = { .func = op_add_a_d8, .name = "ADD A,d8", .cycles = 2, .length = 2 },
-    [0xC7] = { .func = NULL, .name = "RST 00H", .cycles = 4, .length = 1 },
+    [0xC7] = { .func = op_rst, .name = "RST 00H", .cycles = 4, .length = 1 },
     [0xC8] = { .func = op_ret_cc, .name = "RET Z", .cycles = 2, .length = 1 },
     [0xC9] = { .func = op_ret, .name = "RET", .cycles = 4, .length = 1 },
     [0xCA] = { .func = op_jp_cc_nn, .name = "JP Z,a16", .cycles = 3, .length = 3 },
@@ -278,7 +279,7 @@ Instruction instruction_set[256] = {
     [0xCC] = { .func = op_call_cc_nn, .name = "CALL Z,a16", .cycles = 3, .length = 3 },
     [0xCD] = { .func = op_call_nn, .name = "CALL a16", .cycles = 6, .length = 3 },
     [0xCE] = { .func = op_adc_a_d8, .name = "ADC A,d8", .cycles = 2, .length = 2 },
-    [0xCF] = { .func = NULL, .name = "RST 08H", .cycles = 4, .length = 1 },
+    [0xCF] = { .func = op_rst, .name = "RST 08H", .cycles = 4, .length = 1 },
     [0xD0] = { .func = op_ret_cc, .name = "RET NC", .cycles = 2, .length = 1 },
     [0xD1] = { .func = op_pop_rr, .name = "POP DE", .cycles = 3, .length = 1 },
     [0xD2] = { .func = op_jp_cc_nn, .name = "JP NC,a16", .cycles = 3, .length = 3 },
@@ -286,7 +287,7 @@ Instruction instruction_set[256] = {
     [0xD4] = { .func = op_call_cc_nn, .name = "CALL NC,a16", .cycles = 3, .length = 3 },
     [0xD5] = { .func = op_push_rr, .name = "PUSH DE", .cycles = 4, .length = 1 },
     [0xD6] = { .func = op_sub_a_d8, .name = "SUB d8", .cycles = 2, .length = 2 },
-    [0xD7] = { .func = NULL, .name = "RST 10H", .cycles = 4, .length = 1 },
+    [0xD7] = { .func = op_rst, .name = "RST 10H", .cycles = 4, .length = 1 },
     [0xD8] = { .func = op_ret_cc, .name = "RET C", .cycles = 2, .length = 1 },
     [0xD9] = { .func = op_reti, .name = "RETI", .cycles = 4, .length = 1 },
     [0xDA] = { .func = op_jp_cc_nn, .name = "JP C,a16", .cycles = 3, .length = 3 },
@@ -294,7 +295,7 @@ Instruction instruction_set[256] = {
     [0xDC] = { .func = op_call_cc_nn, .name = "CALL C,a16", .cycles = 3, .length = 3 },
     [0xDD] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xDE] = { .func = op_sbc_a_d8, .name = "SBC A,d8", .cycles = 2, .length = 2 },
-    [0xDF] = { .func = NULL, .name = "RST 18H", .cycles = 4, .length = 1 },
+    [0xDF] = { .func = op_rst, .name = "RST 18H", .cycles = 4, .length = 1 },
     [0xE0] = { .func = NULL, .name = "LDH,(a8),A", .cycles = 3, .length = 2 },
     [0xE1] = { .func = op_pop_rr, .name = "POP HL", .cycles = 3, .length = 1 },
     [0xE2] = { .func = NULL, .name = "LDH (C),A", .cycles = 2, .length = 1 },
@@ -302,7 +303,7 @@ Instruction instruction_set[256] = {
     [0xE4] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xE5] = { .func = op_push_rr, .name = "PUSH HL", .cycles = 4, .length = 1 },
     [0xE6] = { .func = op_and_a_d8, .name = "AND d8", .cycles = 2, .length = 2 },
-    [0xE7] = { .func = NULL, .name = "RST 20H", .cycles = 4, .length = 1 },
+    [0xE7] = { .func = op_rst, .name = "RST 20H", .cycles = 4, .length = 1 },
     [0xE8] = { .func = NULL, .name = "ADD SP,r8", .cycles = 4, .length = 2 },
     [0xE9] = { .func = op_jp_hl, .name = "JP HL", .cycles = 1, .length = 1 },
     [0xEA] = { .func = NULL, .name = "LD (a16),A", .cycles = 4, .length = 3 },
@@ -310,7 +311,7 @@ Instruction instruction_set[256] = {
     [0xEC] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xED] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xEE] = { .func = op_xor_a_d8, .name = "XOR d8", .cycles = 2, .length = 2 },
-    [0xEF] = { .func = NULL, .name = "RST 28H", .cycles = 4, .length = 1 },
+    [0xEF] = { .func = op_rst, .name = "RST 28H", .cycles = 4, .length = 1 },
     [0xF0] = { .func = NULL, .name = "LDH A,(a8)", .cycles = 3, .length = 2 },
     [0xF1] = { .func = op_pop_rr, .name = "POP AF", .cycles = 3, .length = 1 },
     [0xF2] = { .func = NULL, .name = "LDH A,(C)", .cycles = 2, .length = 1 },
@@ -326,7 +327,7 @@ Instruction instruction_set[256] = {
     [0xFC] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xFD] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xFE] = { .func = op_cp_a_d8, .name = "CP d8", .cycles = 2, .length = 2 },
-    [0xFF] = { .func = NULL, .name = "RST 38H", .cycles = 4, .length = 1 },
+    [0xFF] = { .func = op_rst, .name = "RST 38H", .cycles = 4, .length = 1 },
     
 };
 
@@ -1524,6 +1525,7 @@ void push_pc(GameBoy* gb) {
     u8 hi = (return_addr >> 8) & 0xFF;
     bus_write(gb, gb->cpu.sp, hi);
 
+    gb->cpu.sp--;
     u8 lo = (return_addr & 0xFF);
     bus_write(gb, gb->cpu.sp, lo);
 }
@@ -1603,3 +1605,30 @@ void op_reti(GameBoy* gb) {
     // 2. Habilitar Interrupciones Maestras
     gb->cpu.ime = true;
 }
+
+// ----------------- RST n (Restart / Call Vector) ----------------------
+// Opcodes: 0xC7, 0xCF, 0xD7, 0xDF, 0xE7, 0xEF, 0xF7, 0xFF
+//      RST 0 -> PC = $0000
+//      RST 1 -> PC = $0008
+//      RST 2 -> PC = $0010
+//      RST 3 -> PC = $0018
+//      RST 4 -> PC = $0020
+//      RST 5 -> PC = $0028
+//      RST 6 -> PC = $0030
+//      RST 7 -> PC = $0038
+void op_rst(GameBoy* gb) {
+    // 1. Decodificar 't' (0 a 7)
+    // Patrón: 11 ttt 111
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
+    u8 t = (opcode >> 3) & 0x07;
+
+    // 2. Guardar dirección de retorno (PC actual) en la Pila
+    // RST funciona exactamente igual que un CALL
+    push_pc(gb);
+
+    // 3. Calcular nueva dirección (t * 8)
+    u16 target_addr = t << 3;
+    
+    // 4. Saltar
+    gb->cpu.pc = target_addr;
+} 
