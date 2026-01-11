@@ -27,8 +27,8 @@ void op_rlca(GameBoy* gb);
 void op_rrca(GameBoy* gb);
 void op_rla(GameBoy* gb);
 void op_rra(GameBoy* gb);
-
 void op_daa(GameBoy* gb);
+void op_cpl(GameBoy* gb);
 void op_scf(GameBoy* gb);
 void op_ccf(GameBoy* gb);
 
@@ -120,7 +120,7 @@ Instruction instruction_set[256] = {
     [0x2C] = { .func = op_inc_r, .name = "INC L", .cycles = 1, .length = 1 },
     [0x2D] = { .func = op_dec_r, .name = "DEC L", .cycles = 1, .length = 1 },
     [0x2E] = { .func= op_ld_r_d8, .name= "LD L,d8", .cycles = 2, .length = 2 },
-    [0x2F] = { .func= NULL, .name= "CPL", .cycles = 1, .length = 1 },
+    [0x2F] = { .func= op_cpl, .name= "CPL", .cycles = 1, .length = 1 },
     [0x30] = { .func = op_jr_cc_e, .name = "JR NC,r8", .cycles = 2, .length = 2 },
     [0x31] = { .func = op_ld_rr_d16, .name = "LD SP,d16", .cycles = 3, .length = 3 },
     [0x32] = { .func = op_ld_addr_rr_a, .name = "LD (HL-),A", .cycles = 2, .length = 1 },
@@ -1100,6 +1100,21 @@ void op_daa(GameBoy* gb) {
 
     // Flag N: NO se toca (se mantiene el valor que tenía)
 }
+
+// --------------------------- CPL ----------------------------
+// Complement Accumulator - Opcode 0x2F
+void op_cpl(GameBoy* gb) {
+    // 1. Invertir bis de A
+    gb->cpu.a = ~(gb->cpu.a);
+
+    // 2. Gestionar Flags
+    // CPL fuerza N y H a 1.
+    gb->cpu.f |= FLAG_H;
+    gb->cpu.f |= FLAG_N;
+
+    // Z y C se mantienen intactos
+}
+
 // ===============================================================
 //                        INSTRUCCIONES ALU
 // ===============================================================
