@@ -51,6 +51,7 @@ typedef struct {
     // Estado interno
     bool halted;    // Indica si la CPU está en modo halt
     bool halt_bug;  // Indica si se produjo el bug en la instrucción HALT
+    bool stopped;   // Indica si la CPU está en modo STOP
 
     u8 cycles;      // Ciclos totales ejecutados de reloj
 } Cpu;

@@ -64,6 +64,8 @@ void op_ret(GameBoy* gb);
 void op_ret_cc(GameBoy* gb);
 void op_reti(GameBoy* gb);
 
+void op_stop(GameBoy* gb);
+
 // Tabla de instrucciones (completa con todas las instrucciones)
 Instruction instruction_set[256] = {
     [0x00] = { .func = op_nop, .name = "NOP", .cycles = 1, .length = 1 },
@@ -82,7 +84,7 @@ Instruction instruction_set[256] = {
     [0x0D] = { .func = op_dec_r, .name = "DEC C", .cycles = 1, .length = 1 },
     [0x0E] = { .func = op_ld_r_d8, .name = "LD C,d8", .cycles = 2, .length = 2 },
     [0x0F] = { .func = op_rrca, .name = "RRCA", .cycles = 1, .length = 1 },
-    [0x10] = { .func = NULL, .name = "STOP", .cycles = 2, .length = 2 },
+    [0x10] = { .func = op_stop, .name = "STOP", .cycles = 2, .length = 2 },
     [0x11] = { .func = op_ld_rr_d16, .name = "LD DE,d16", .cycles = 3, .length = 3 },
     [0x12] = { .func = op_ld_addr_rr_a, .name = "LD (DE),A", .cycles = 2, .length = 1 },
     [0x13] = { .func = op_inc_rr, .name = "INC DE", .cycles = 2, .length = 1 },
@@ -379,6 +381,14 @@ void cpu_init(Cpu* cpu) {
 
 // Retorna el número de M-Cycles consumidos por la instrucción ejecutada
 int cpu_step(GameBoy* gb) {
+    // --- MODO STOP (Hibernación) ---
+    if (gb->cpu.stopped) {
+        // En hardware real, nada avanza.
+        // No devolvemos ciclos (o devolvemos 0), por lo que Timers, Audio
+        // y Video NO deben recibir actualizaciones de tiempo.
+        return 0;
+    }
+    
     // Si estamos en HALT, no ejecutamos nada, solo consumimos tiempo
     if (gb->cpu.halted) {
         // CPU dormida, consume 1 M-Cycle por paso
@@ -756,6 +766,23 @@ void op_halt(GameBoy* gb) {
             gb->cpu.halt_bug = true;
         }
     }
+}
+
+// ------------------- STOP ----------------------------------------
+// Opcode 0x10
+// Longitud efectiva: 2 bytes (0x10 + el byte 0x00 obligatorio)
+void op_stop(GameBoy* gb) {
+    // 1. Consumimos el byte "dummy" siguiente
+    // El hardware espera que después de 0x10 venga un 0x00.
+    // Lo leemos y avanzamos el PC para no ejecutar basura al despertar.
+    bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++;
+
+    // 2. Activamos el modo STOP
+    gb->cpu.stopped = true;
+
+    // 3. TODO: Quirk de Hardware (DMG): Reset del DIV
+    // Al entrar en STOP, el divisor interno del Timer se reinicia.
 }
 
 // -------------------------- INC r -------------------------
