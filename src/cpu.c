@@ -49,6 +49,7 @@ void op_ld_addr_rr_a(GameBoy* gb);
 void op_ld_a_addr_rr(GameBoy* gb);
 void op_inc_rr(GameBoy* gb);
 void op_dec_rr(GameBoy* gb);
+void op_add_hl_rr(GameBoy* gb);
 void op_push_rr(GameBoy* gb);
 void op_pop_rr(GameBoy* gb);
 
@@ -74,7 +75,7 @@ Instruction instruction_set[256] = {
     [0x06] = { .func = op_ld_r_d8, .name = "LD B,d8", .cycles = 2, .length = 2 },
     [0x07] = { .func = op_rlca, .name = "RLCA", .cycles = 1, .length = 1 },
     [0x08] = { .func = op_ld_a16_sp, .name = "LD (a16),SP", .cycles = 5, .length = 3 },
-    [0x09] = { .func = NULL, .name = "ADD HL,BC", .cycles = 2, .length = 1 },
+    [0x09] = { .func = op_add_hl_rr, .name = "ADD HL,BC", .cycles = 2, .length = 1 },
     [0x0A] = { .func = op_ld_a_addr_rr, .name = "LD A,(BC)", .cycles = 2, .length = 1 },
     [0x0B] = { .func = op_dec_rr, .name = "DEC BC", .cycles = 2, .length = 1 },
     [0x0C] = { .func = op_inc_r, .name = "INC C", .cycles = 1, .length = 1 },
@@ -90,7 +91,7 @@ Instruction instruction_set[256] = {
     [0x16] = { .func = op_ld_r_d8, .name = "LD D,d8", .cycles = 2, .length = 2 },
     [0x17] = { .func = op_rla, .name = "RLA", .cycles = 1, .length = 1 },
     [0x18] = { .func = op_jr_e, .name = "JR r8", .cycles = 3, .length = 2 },
-    [0x19] = { .func = NULL, .name = "ADD HL,DE", .cycles = 2, .length = 1 },
+    [0x19] = { .func = op_add_hl_rr, .name = "ADD HL,DE", .cycles = 2, .length = 1 },
     [0x1A] = { .func = op_ld_a_addr_rr, .name = "LD A,(DE)", .cycles = 2, .length = 1 },
     [0x1B] = { .func = op_dec_rr, .name = "DEC DE", .cycles = 2, .length = 1 },
     [0x1C] = { .func = op_inc_r, .name = "INC E", .cycles = 1, .length = 1 },
@@ -106,7 +107,7 @@ Instruction instruction_set[256] = {
     [0x26] = { .func = op_ld_r_d8, .name = "LD H,d8", .cycles = 2, .length = 2 },
     [0x27] = { .func = NULL, .name = "DAA", .cycles = 1, .length = 1 },
     [0x28] = { .func = op_jr_cc_e, .name = "JR Z,r8", .cycles = 2, .length = 2 },
-    [0x29] = { .func = NULL, .name = "ADD HL,HL", .cycles = 2, .length = 1 },
+    [0x29] = { .func = op_add_hl_rr, .name = "ADD HL,HL", .cycles = 2, .length = 1 },
     [0x2A] = { .func = op_ld_a_addr_rr, .name = "LD A,(HL+)", .cycles = 2, .length = 1 },
     [0x2B] = { .func = op_dec_rr, .name = "DEC HL", .cycles = 2, .length = 1 },
     [0x2C] = { .func = op_inc_r, .name = "INC L", .cycles = 1, .length = 1 },
@@ -122,7 +123,7 @@ Instruction instruction_set[256] = {
     [0x36] = { .func = op_ld_r_d8, .name = "LD (HL),d8", .cycles = 3, .length = 2 },
     [0x37] = { .func = NULL, .name = "SCF", .cycles = 1, .length = 1 },
     [0x38] = { .func = op_jr_cc_e, .name = "JR C,r8", .cycles = 2, .length = 2 },
-    [0x39] = { .func = NULL, .name = "ADD HL,SP", .cycles = 2, .length = 1 },
+    [0x39] = { .func = op_add_hl_rr, .name = "ADD HL,SP", .cycles = 2, .length = 1 },
     [0x3A] = { .func = op_ld_a_addr_rr, .name = "LD A,(HL-)", .cycles = 2, .length = 1 },
     [0x3B] = { .func = op_dec_rr, .name = "DEC SP", .cycles = 2, .length = 1 },
     [0x3C] = { .func = op_inc_r, .name = "INC A", .cycles = 1, .length = 1 },
@@ -879,6 +880,44 @@ void op_dec_rr(GameBoy* gb) {
     val--;
 
     write_register_pair(&gb->cpu, reg_idx, val);
+}
+
+// ---------------------- ADD HL, rr (16 bits) --------------------
+// Opcodes: 0x09, 0x19, 0x29, 0x39
+void op_add_hl_rr(GameBoy* gb) {
+    // 1. Recuperamos opcode
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
+
+    // 2. Identificamos el registro fuente (BC, DE, HL, SP)
+    // Bits 4-5: 00-BC, 01=DE, 10=HL, 11=SP
+    RegisterPairIndex src_idx = (RegisterPairIndex)((opcode >> 4) & 0x03);
+
+    // 3. Obtenemos valors
+    u16 hl_val = get_register_pair(&gb->cpu, REG_PAIR_HL);
+    u16 rr_val = get_register_pair(&gb->cpu, src_idx);
+
+    // Usamos uint32_t para capturar el carry
+    u32 result = hl_val + rr_val;
+
+    // 4. GESTIÓN DE FLAGS
+
+    // Flag N: Siempre 0
+    gb->cpu.f &= ~FLAG_N;
+
+    // Flag H: Half Carry en el bit 11
+    // Comprobamos si la suma de los 12 bits bajos desborda
+    if (((hl_val & 0x0FFF) + (rr_val & 0x0FFF)) > 0x0FFF) {
+        gb->cpu.f |= FLAG_H;
+    }
+    else {
+        gb->cpu.f &= ~FLAG_H;
+    }
+
+    // Flag Z: NO SE MODIFICA.
+    // Mantenemos el valor que tuviera antes.
+
+    // 5. Guardar el resultado (truncado a 16 bits)
+    write_register_pair(&gb->cpu, REG_PAIR_HL, (u16)result);
 }
 
 // =============================================================
