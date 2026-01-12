@@ -17,7 +17,8 @@ void op_ld_r_r(GameBoy* gb);
 void op_ld_r_d8(GameBoy* gb);
 void op_ld_rr_d16(GameBoy* gb);
 void op_ld_a16_sp(GameBoy* gb);
-
+void op_ld_a16_a(GameBoy* gb);
+void op_ldh_a8_a(GameBoy* gb);
 void op_halt(GameBoy* gb);
 
 void op_inc_r(GameBoy* gb);
@@ -297,7 +298,7 @@ Instruction instruction_set[256] = {
     [0xDD] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xDE] = { .func = op_sbc_a_d8, .name = "SBC A,d8", .cycles = 2, .length = 2 },
     [0xDF] = { .func = op_rst, .name = "RST 18H", .cycles = 4, .length = 1 },
-    [0xE0] = { .func = NULL, .name = "LDH,(a8),A", .cycles = 3, .length = 2 },
+    [0xE0] = { .func = op_ldh_a8_a, .name = "LDH,(a8),A", .cycles = 3, .length = 2 },
     [0xE1] = { .func = op_pop_rr, .name = "POP HL", .cycles = 3, .length = 1 },
     [0xE2] = { .func = NULL, .name = "LDH (C),A", .cycles = 2, .length = 1 },
     [0xE3] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
@@ -307,7 +308,7 @@ Instruction instruction_set[256] = {
     [0xE7] = { .func = op_rst, .name = "RST 20H", .cycles = 4, .length = 1 },
     [0xE8] = { .func = NULL, .name = "ADD SP,r8", .cycles = 4, .length = 2 },
     [0xE9] = { .func = op_jp_hl, .name = "JP HL", .cycles = 1, .length = 1 },
-    [0xEA] = { .func = NULL, .name = "LD (a16),A", .cycles = 4, .length = 3 },
+    [0xEA] = { .func = op_ld_a16_a, .name = "LD (a16),A", .cycles = 4, .length = 3 },
     [0xEB] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xEC] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xED] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
@@ -737,6 +738,34 @@ void op_ld_a16_sp(GameBoy* gb) {
 
     // 3. Guardamos SP en esa dirección
     bus_write16(gb, addr, gb->cpu.sp);
+}
+
+// -------------------- LD (a16), A --------------------------------
+// Opcode 0xEA
+void op_ld_a16_a(GameBoy* gb) {
+    // 1. La dirección de destino está en los dos bytes siguientes al opcode
+    u16 address = bus_read16(gb, gb->cpu.pc);
+
+    // Al leer el valor inmediato de 16-bits el PC se ha incrementado en +2
+    gb->cpu.pc += 2;
+
+    // 2. Escribe el valor de A en la dirección de memoria
+    bus_write(gb, address, gb->cpu.a);
+}
+
+// LDH (a8), A
+void op_ldh_a8_a(GameBoy* gb) {
+    // 1. Leer el offset (PC apunta al byte siguiente al opcode)
+    u8 offset = bus_read(gb, gb->cpu.pc);
+
+    // 2. Avanzamos el PC solo 1 byte (hemos consumido el offset)
+    gb->cpu.pc++;
+
+    // 2. Calcular dirección (High Memory: 0xFF00 + offset)
+    u16 address = 0xFF00 | offset;
+
+    // 4. Escribir
+    bus_write(gb, address, gb->cpu.a);
 }
 
 // ------------------- HALT ----------------------------------------
