@@ -11,67 +11,6 @@ typedef struct {
 
 void print_cpu_state(const Cpu* cpu);
 
-// Declaraciones de funciones (prototipos)
-void op_nop(GameBoy* gb);
-void op_ld_r_r(GameBoy* gb);
-void op_ld_r_d8(GameBoy* gb);
-void op_ld_rr_d16(GameBoy* gb);
-void op_ld_a16_sp(GameBoy* gb);
-void op_ld_a16_a(GameBoy* gb);
-void op_ldh_a8_a(GameBoy* gb);
-void op_halt(GameBoy* gb);
-
-void op_inc_r(GameBoy* gb);
-void op_dec_r(GameBoy* gb);
-
-void op_rlca(GameBoy* gb);
-void op_rrca(GameBoy* gb);
-void op_rla(GameBoy* gb);
-void op_rra(GameBoy* gb);
-void op_daa(GameBoy* gb);
-void op_cpl(GameBoy* gb);
-void op_scf(GameBoy* gb);
-void op_ccf(GameBoy* gb);
-
-void op_add_a_r(GameBoy* gb);
-void op_add_a_d8(GameBoy* gb);
-void op_adc_a_r(GameBoy* gb);
-void op_adc_a_d8(GameBoy* gb);
-void op_sub_a_r(GameBoy* gb);
-void op_sub_a_d8(GameBoy* gb);
-void op_sbc_a_r(GameBoy* gb);
-void op_sbc_a_d8(GameBoy* gb);
-void op_cp_a_r(GameBoy* gb);
-void op_cp_a_d8(GameBoy* gb);
-void op_and_a_r(GameBoy* gb);
-void op_and_a_d8(GameBoy* gb);
-void op_xor_a_r(GameBoy* gb);
-void op_xor_a_d8(GameBoy* gb);
-void op_or_a_r(GameBoy* gb);
-void op_or_a_d8(GameBoy* gb);
-
-void op_ld_addr_rr_a(GameBoy* gb);
-void op_ld_a_addr_rr(GameBoy* gb);
-void op_inc_rr(GameBoy* gb);
-void op_dec_rr(GameBoy* gb);
-void op_add_hl_rr(GameBoy* gb);
-void op_push_rr(GameBoy* gb);
-void op_pop_rr(GameBoy* gb);
-
-void op_jp_nn(GameBoy* gb);
-void op_jp_cc_nn(GameBoy* gb);
-void op_jp_hl(GameBoy* gb);
-void op_jr_e(GameBoy* gb);
-void op_jr_cc_e(GameBoy* gb);
-void op_call_nn(GameBoy* gb);
-void op_call_cc_nn(GameBoy* gb);
-void op_ret(GameBoy* gb);
-void op_ret_cc(GameBoy* gb);
-void op_reti(GameBoy* gb);
-void op_rst(GameBoy* gb);
-
-void op_stop(GameBoy* gb);
-
 // Tabla de instrucciones (completa con todas las instrucciones)
 Instruction instruction_set[256] = {
     [0x00] = { .func = op_nop, .name = "NOP", .cycles = 1, .length = 1 },
@@ -314,7 +253,7 @@ Instruction instruction_set[256] = {
     [0xED] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xEE] = { .func = op_xor_a_d8, .name = "XOR d8", .cycles = 2, .length = 2 },
     [0xEF] = { .func = op_rst, .name = "RST 28H", .cycles = 4, .length = 1 },
-    [0xF0] = { .func = NULL, .name = "LDH A,(a8)", .cycles = 3, .length = 2 },
+    [0xF0] = { .func = op_ldh_a_a8, .name = "LDH A,(a8)", .cycles = 3, .length = 2 },
     [0xF1] = { .func = op_pop_rr, .name = "POP AF", .cycles = 3, .length = 1 },
     [0xF2] = { .func = NULL, .name = "LDH A,(C)", .cycles = 2, .length = 1 },
     [0xF3] = { .func = NULL, .name = "DI", .cycles = 1, .length = 1 },
@@ -753,19 +692,31 @@ void op_ld_a16_a(GameBoy* gb) {
     bus_write(gb, address, gb->cpu.a);
 }
 
-// LDH (a8), A
-void op_ldh_a8_a(GameBoy* gb) {
-    // 1. Leer el offset (PC apunta al byte siguiente al opcode)
+// LDH
+static inline uint16_t get_ldh_address(GameBoy* gb)
+{
+    // 1. Leer el offet (PC apunta al byte siguiente al opcode)
     u8 offset = bus_read(gb, gb->cpu.pc);
 
-    // 2. Avanzamos el PC solo 1 byte (hemos consumido el offset)
+    // 2. Avanzamos el PC 1 byte (hemos consumido el offset)
     gb->cpu.pc++;
 
     // 2. Calcular dirección (High Memory: 0xFF00 + offset)
-    u16 address = 0xFF00 | offset;
-
-    // 4. Escribir
+    return (0xFF00 | offset);
+}
+// ------------------ LDH (a8), A ----------------------------------
+// Opcode 0xE0
+void op_ldh_a8_a(GameBoy* gb) {
+    u16 address = get_ldh_address(gb);
     bus_write(gb, address, gb->cpu.a);
+}
+
+// ------------------- LDH A, (a8) ----------------------------------
+// Opcode 0xF0
+void op_ldh_a_a8(GameBoy* gb)
+{
+    u16 address = get_ldh_address(gb);
+    gb->cpu.a = bus_read(gb, address);
 }
 
 // ------------------- HALT ----------------------------------------
