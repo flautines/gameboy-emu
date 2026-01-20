@@ -79,7 +79,12 @@ void op_ld_a16_sp(GameBoy* gb);
 void op_ld_a16_a(GameBoy* gb);
 void op_ldh_a8_a(GameBoy* gb);
 void op_ldh_a_a8(GameBoy* gb);
+void op_ld_a_addr(GameBoy* gb);
+void op_ldh_c_a(GameBoy* gb);
+void op_ldh_a_c(GameBoy* gb);
 
+void op_di(GameBoy* gb);
+void op_ei(GameBoy* gb);
 void op_halt(GameBoy* gb);
 
 void op_inc_r(GameBoy* gb);

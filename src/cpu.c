@@ -239,7 +239,7 @@ Instruction instruction_set[256] = {
     [0xDF] = { .func = op_rst, .name = "RST 18H", .cycles = 4, .length = 1 },
     [0xE0] = { .func = op_ldh_a8_a, .name = "LDH,(a8),A", .cycles = 3, .length = 2 },
     [0xE1] = { .func = op_pop_rr, .name = "POP HL", .cycles = 3, .length = 1 },
-    [0xE2] = { .func = NULL, .name = "LDH (C),A", .cycles = 2, .length = 1 },
+    [0xE2] = { .func = op_ldh_c_a, .name = "LDH (C),A", .cycles = 2, .length = 1 },
     [0xE3] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xE4] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xE5] = { .func = op_push_rr, .name = "PUSH HL", .cycles = 4, .length = 1 },
@@ -255,7 +255,7 @@ Instruction instruction_set[256] = {
     [0xEF] = { .func = op_rst, .name = "RST 28H", .cycles = 4, .length = 1 },
     [0xF0] = { .func = op_ldh_a_a8, .name = "LDH A,(a8)", .cycles = 3, .length = 2 },
     [0xF1] = { .func = op_pop_rr, .name = "POP AF", .cycles = 3, .length = 1 },
-    [0xF2] = { .func = NULL, .name = "LDH A,(C)", .cycles = 2, .length = 1 },
+    [0xF2] = { .func = op_ldh_a_c, .name = "LDH A,(C)", .cycles = 2, .length = 1 },
     [0xF3] = { .func = NULL, .name = "DI", .cycles = 1, .length = 1 },
     [0xF4] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xF5] = { .func = op_push_rr, .name = "PUSH AF", .cycles = 4, .length = 1 },
@@ -263,7 +263,7 @@ Instruction instruction_set[256] = {
     [0xF7] = { .func = NULL, .name = "RST 30H", .cycles = 4, .length = 1 },
     [0xF8] = { .func = NULL, .name = "LD HL,SP+r8", .cycles = 3, .length = 2 },
     [0xF9] = { .func = NULL, .name = "LD SP,HL", .cycles = 2, .length = 1 },
-    [0xFA] = { .func = NULL, .name = "LD A,(a16)", .cycles = 4, .length = 3 },
+    [0xFA] = { .func = op_ld_a_addr, .name = "LD A,(a16)", .cycles = 4, .length = 3 },
     [0xFB] = { .func = NULL, .name = "EI", .cycles = 1, .length = 1 },
     [0xFC] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xFD] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
@@ -692,7 +692,7 @@ void op_ld_a16_a(GameBoy* gb) {
     bus_write(gb, address, gb->cpu.a);
 }
 
-// LDH
+// Función helper para obtener dirección 0xFF00 + offset inmediato (2 bytes)
 static inline uint16_t get_ldh_address(GameBoy* gb)
 {
     // 1. Leer el offet (PC apunta al byte siguiente al opcode)
@@ -704,6 +704,7 @@ static inline uint16_t get_ldh_address(GameBoy* gb)
     // 2. Calcular dirección (High Memory: 0xFF00 + offset)
     return (0xFF00 | offset);
 }
+
 // ------------------ LDH (a8), A ----------------------------------
 // Opcode 0xE0
 void op_ldh_a8_a(GameBoy* gb) {
@@ -717,6 +718,48 @@ void op_ldh_a_a8(GameBoy* gb)
 {
     u16 address = get_ldh_address(gb);
     gb->cpu.a = bus_read(gb, address);
+}
+
+// ------------------- LD A, (a16) ----------------------------------
+// Opcode 0xFA
+// Lee el byte en la dirección absoluta dada y lo guarda en A
+void op_ld_a_addr(GameBoy* gb)
+{
+    // 1. Leer dirección de 16 bits y ajustar PC
+    u16 addr = bus_read16(gb, gb->cpu.pc);
+    gb->cpu.pc+=2;
+
+    // 2. Leer valor desde esa dirección y guardarlo en A
+    gb->cpu.a = bus_read(gb, addr);
+}
+
+// ----------------------- LDH (C), A -----------------------------
+// Opcode 0xE2
+void op_ldh_c_a(GameBoy* gb)
+{
+    u16 addr = 0xFF00 | gb->cpu.c;
+    bus_write(gb, addr, gb->cpu.a);
+}
+
+// ----------------------- LDH A, (C) -----------------------------
+// Opcode 0xF2
+void op_ldh_a_c(GameBoy* gb)
+{
+    u16 addr = 0xFF00 | gb->cpu.c;
+    gb->cpu.a = bus_read(gb, addr);
+}
+
+// ------------------ DI (Disable Interrupts) ---------------------
+// Opcode 0xF3
+void op_di(GameBoy* gb)
+{
+    gb->cpu.ime = false;
+}
+// ------------------ EI (Enable Interrupts) -----------------------------
+// Opcode 0xFB
+void op_ei(GameBoy* gb)
+{
+    gb->cpu.ime = true;
 }
 
 // ------------------- HALT ----------------------------------------
