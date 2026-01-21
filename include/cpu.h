@@ -82,6 +82,7 @@ void op_ldh_a_a8(GameBoy* gb);
 void op_ld_a_addr(GameBoy* gb);
 void op_ldh_c_a(GameBoy* gb);
 void op_ldh_a_c(GameBoy* gb);
+void op_ld_sp_hl(GameBoy* gb);
 
 void op_di(GameBoy* gb);
 void op_ei(GameBoy* gb);
@@ -103,6 +104,8 @@ void op_add_a_r(GameBoy* gb);
 void op_add_a_d8(GameBoy* gb);
 void op_adc_a_r(GameBoy* gb);
 void op_adc_a_d8(GameBoy* gb);
+void op_add_sp_r8(GameBoy* gb);
+void op_ld_hl_sp_r8(GameBoy* gb);
 void op_sub_a_r(GameBoy* gb);
 void op_sub_a_d8(GameBoy* gb);
 void op_sbc_a_r(GameBoy* gb);

@@ -245,7 +245,7 @@ Instruction instruction_set[256] = {
     [0xE5] = { .func = op_push_rr, .name = "PUSH HL", .cycles = 4, .length = 1 },
     [0xE6] = { .func = op_and_a_d8, .name = "AND d8", .cycles = 2, .length = 2 },
     [0xE7] = { .func = op_rst, .name = "RST 20H", .cycles = 4, .length = 1 },
-    [0xE8] = { .func = NULL, .name = "ADD SP,r8", .cycles = 4, .length = 2 },
+    [0xE8] = { .func = op_add_sp_r8, .name = "ADD SP,r8", .cycles = 4, .length = 2 },
     [0xE9] = { .func = op_jp_hl, .name = "JP HL", .cycles = 1, .length = 1 },
     [0xEA] = { .func = op_ld_a16_a, .name = "LD (a16),A", .cycles = 4, .length = 3 },
     [0xEB] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
@@ -256,15 +256,15 @@ Instruction instruction_set[256] = {
     [0xF0] = { .func = op_ldh_a_a8, .name = "LDH A,(a8)", .cycles = 3, .length = 2 },
     [0xF1] = { .func = op_pop_rr, .name = "POP AF", .cycles = 3, .length = 1 },
     [0xF2] = { .func = op_ldh_a_c, .name = "LDH A,(C)", .cycles = 2, .length = 1 },
-    [0xF3] = { .func = NULL, .name = "DI", .cycles = 1, .length = 1 },
+    [0xF3] = { .func = op_di, .name = "DI", .cycles = 1, .length = 1 },
     [0xF4] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xF5] = { .func = op_push_rr, .name = "PUSH AF", .cycles = 4, .length = 1 },
     [0xF6] = { .func = op_or_a_d8, .name = "OR d8", .cycles = 2, .length = 2 },
-    [0xF7] = { .func = NULL, .name = "RST 30H", .cycles = 4, .length = 1 },
-    [0xF8] = { .func = NULL, .name = "LD HL,SP+r8", .cycles = 3, .length = 2 },
-    [0xF9] = { .func = NULL, .name = "LD SP,HL", .cycles = 2, .length = 1 },
+    [0xF7] = { .func = op_rst, .name = "RST 30H", .cycles = 4, .length = 1 },
+    [0xF8] = { .func = op_ld_hl_sp_r8, .name = "LD HL,SP+r8", .cycles = 3, .length = 2 },
+    [0xF9] = { .func = op_ld_sp_hl, .name = "LD SP,HL", .cycles = 2, .length = 1 },
     [0xFA] = { .func = op_ld_a_addr, .name = "LD A,(a16)", .cycles = 4, .length = 3 },
-    [0xFB] = { .func = NULL, .name = "EI", .cycles = 1, .length = 1 },
+    [0xFB] = { .func = op_ei, .name = "EI", .cycles = 1, .length = 1 },
     [0xFC] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xFD] = { .func = NULL, .name = "!!INVALID OPCODE!!", .cycles = 0, .length = 1 },
     [0xFE] = { .func = op_cp_a_d8, .name = "CP d8", .cycles = 2, .length = 2 },
@@ -428,38 +428,38 @@ u8* get_register_ptr(Cpu* cpu, int index) {
 
 // Helper: Escribe un valor de 16 bits en el par de registros dado
 // index: 0=BC, 1=DE, 2=HL, 3=SP
-void write_register_pair(Cpu* cpu, int index, u16 value) {
+void write_register_pair(GameBoy* gb, int index, u16 value) {
     switch (index) {
         case 0: // BC
-            cpu->b = (value >> 8) & 0xFF;
-            cpu->c = value & 0xFF;
+            gb->cpu.b = (value >> 8) & 0xFF;
+            gb->cpu.c = value & 0xFF;
             break;
         case 1: // DE
-            cpu->d = (value >> 8) & 0xFF;
-            cpu->e = value & 0xFF;
+            gb->cpu.d = (value >> 8) & 0xFF;
+            gb->cpu.e = value & 0xFF;
             break;
         case 2: // HL
-            cpu->h = (value >> 8) & 0xFF;
-            cpu->l = value & 0xFF;
+            gb->cpu.h = (value >> 8) & 0xFF;
+            gb->cpu.l = value & 0xFF;
             break;
         case 3: // SP
-            cpu->sp = value;
+            gb->cpu.sp = value;
             break;
     }
 }
 
 // Helper: Lee un valor de 16 bits del par de registros dado
 // index: 0=BC, 1=DE, 2=HL, 3=SP
-u16 get_register_pair(Cpu* cpu, int index) {
+u16 get_register_pair(GameBoy* gb, int index) {
     switch (index) {
         case 0: // BC
-            return ((u16)cpu->b << 8) | cpu->c;
+            return ((u16)gb->cpu.b << 8) | gb->cpu.c;
         case 1: // DE
-            return ((u16)cpu->d << 8) | cpu->e;
+            return ((u16)gb->cpu.d << 8) | gb->cpu.e;
         case 2: // HL
-            return ((u16)cpu->h << 8) | cpu->l;
+            return ((u16)gb->cpu.h << 8) | gb->cpu.l;
         case 3: // SP
-            return cpu->sp;
+            return gb->cpu.sp;
     }
     return 0; // Indicador de error
 }
@@ -566,7 +566,7 @@ void op_ld_rr_d16(GameBoy* gb) {
     u16 value = bus_read16(gb, gb->cpu.pc);
 
     // 3. Escritura en registro
-    write_register_pair(&gb->cpu, reg_pair_index, value);
+    write_register_pair(gb, reg_pair_index, value);
 
     // 4. Avance del PC
     gb->cpu.pc += 2;
@@ -587,24 +587,24 @@ void op_ld_addr_rr_a(GameBoy* gb) {
     // 3. Lógica específica por registro
     switch (idx) {
         case REG_PAIR_BC: // 0x02
-            addr = get_register_pair(&gb->cpu, REG_PAIR_BC);
+            addr = get_register_pair(gb, REG_PAIR_BC);
         break;
 
         case REG_PAIR_DE: // 0x12
-            addr = get_register_pair(&gb->cpu, REG_PAIR_DE);
+            addr = get_register_pair(gb, REG_PAIR_DE);
         break;
 
         case REG_PAIR_HL: // 0x22: LD (HL+), A (También llamado LDI (HL), A)
-            addr = get_register_pair(&gb->cpu, REG_PAIR_HL);
+            addr = get_register_pair(gb, REG_PAIR_HL);
             // Incrementamos HL después de obtener la dirección original
-            write_register_pair(&gb->cpu, REG_PAIR_HL, addr + 1);
+            write_register_pair(gb, REG_PAIR_HL, addr + 1);
         break;
 
         case REG_PAIR_SP: // 0x32: LD (HL-), A (También llamado LDD (HL), A)
             // ¡OJO! A nivel de bits del opcode es un '3' (lo que sería SP normalmente)
             // pero esta instrucción ESPECÍFICA lo interpreta como "HL con Decremento"
-            addr = get_register_pair(&gb->cpu, REG_PAIR_HL); // Leer HL
-            write_register_pair(&gb->cpu, REG_PAIR_HL, addr - 1);
+            addr = get_register_pair(gb, REG_PAIR_HL); // Leer HL
+            write_register_pair(gb, REG_PAIR_HL, addr - 1);
         break;
 
         default:
@@ -632,25 +632,25 @@ void op_ld_a_addr_rr(GameBoy* gb) {
     // 3. Obtenemos la dirección y aplicamos efectos secundarios (HL+/-)
     switch(idx) {
         case REG_PAIR_BC: // 0x02
-            addr = get_register_pair(&gb->cpu, REG_PAIR_BC);
+            addr = get_register_pair(gb, REG_PAIR_BC);
             break;
 
         case REG_PAIR_DE: // 0x12
-            addr = get_register_pair(&gb->cpu, REG_PAIR_DE);
+            addr = get_register_pair(gb, REG_PAIR_DE);
             break;
 
         case REG_PAIR_HL: // 0x22: LD (HL+), A
-            addr = get_register_pair(&gb->cpu, REG_PAIR_HL);
+            addr = get_register_pair(gb, REG_PAIR_HL);
             // Efecto secundario: Incremento
-            write_register_pair(&gb->cpu, REG_PAIR_HL, addr + 1);
+            write_register_pair(gb, REG_PAIR_HL, addr + 1);
             break;
 
         case REG_PAIR_SP: // 0x32: LD (HL-), A
             // El índice binario 3 se interpreta como "HL con Decremento"
-            addr = get_register_pair(&gb->cpu, REG_PAIR_HL);
+            addr = get_register_pair(gb, REG_PAIR_HL);
 
             // Efecto secundario: Decremento
-            write_register_pair(&gb->cpu, REG_PAIR_HL, addr - 1);
+            write_register_pair(gb, REG_PAIR_HL, addr - 1);
             break;
 
         default:
@@ -747,6 +747,14 @@ void op_ldh_a_c(GameBoy* gb)
 {
     u16 addr = 0xFF00 | gb->cpu.c;
     gb->cpu.a = bus_read(gb, addr);
+}
+
+// ------------------------ LD SP, HL -----------------------------
+// Opcode 0xF9
+void op_ld_sp_hl(GameBoy* gb)
+{
+    u16 hl = get_register_pair(gb, REG_PAIR_HL);
+    gb->cpu.sp = hl;
 }
 
 // ------------------ DI (Disable Interrupts) ---------------------
@@ -916,12 +924,12 @@ void op_inc_rr(GameBoy* gb) {
     // Bits 4-5: Registro (BC, DE, HL, SP)
     int reg_idx = (opcode >> 4) & 0x03;
 
-    u16 val = get_register_pair(&gb->cpu, reg_idx);
+    u16 val = get_register_pair(gb, reg_idx);
 
     // Incremento simple (el desbordamiento de 0xFFFF a 0x0000 es automático en u16)
     val++;
 
-    write_register_pair(&gb->cpu, reg_idx, val);
+    write_register_pair(gb, reg_idx, val);
 }
 
 // ---------------------- DEC rr (16 bits) ------------------------
@@ -929,12 +937,12 @@ void op_dec_rr(GameBoy* gb) {
     u8 opcode = bus_read(gb, gb->cpu.pc - 1);
     int reg_idx = (opcode >> 4) & 0x03;
 
-    u16 val = get_register_pair(&gb->cpu, reg_idx);
+    u16 val = get_register_pair(gb, reg_idx);
 
     // Decremento simple
     val--;
 
-    write_register_pair(&gb->cpu, reg_idx, val);
+    write_register_pair(gb, reg_idx, val);
 }
 
 // ---------------------- ADD HL, rr (16 bits) --------------------
@@ -948,8 +956,8 @@ void op_add_hl_rr(GameBoy* gb) {
     RegisterPairIndex src_idx = (RegisterPairIndex)((opcode >> 4) & 0x03);
 
     // 3. Obtenemos valors
-    u16 hl_val = get_register_pair(&gb->cpu, REG_PAIR_HL);
-    u16 rr_val = get_register_pair(&gb->cpu, src_idx);
+    u16 hl_val = get_register_pair(gb, REG_PAIR_HL);
+    u16 rr_val = get_register_pair(gb, src_idx);
 
     // Usamos uint32_t para capturar el carry
     u32 result = hl_val + rr_val;
@@ -972,7 +980,7 @@ void op_add_hl_rr(GameBoy* gb) {
     // Mantenemos el valor que tuviera antes.
 
     // 5. Guardar el resultado (truncado a 16 bits)
-    write_register_pair(&gb->cpu, REG_PAIR_HL, (u16)result);
+    write_register_pair(gb, REG_PAIR_HL, (u16)result);
 }
 
 // =============================================================
@@ -1239,6 +1247,46 @@ void op_adc_a_r(GameBoy* gb) {
     gb->cpu.a += val + carry;
  }
 
+// Helper para calcular (SP + r8) y gestionar flags correspondientes
+static u16 add_sp_offset_logic(GameBoy* gb)
+{
+    // 1. Leer offset con signo
+    int8_t offset = (int8_t)bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++;
+
+    u16 sp = gb->cpu.sp;
+
+    // 2. Cálculo de Flags (Basado en el byte bajo)
+    // Se usa casting a int para evitar promoción automática incorrecta
+    int result = (sp & 0xFF) + (u8)offset;
+
+    gb->cpu.f = 0; // Z y N siempre a 0
+
+    // Carry en bit 8 (paso de 0xFF)
+    if (result > 0xFF) gb->cpu.f |= FLAG_C;
+
+    // Half Carry en bit 4 (paso de 0x0F)
+    if (((sp & 0x0F) + (offset & 0x0F)) > 0x0F) gb->cpu.f |= FLAG_H;
+
+    // 3. Devolver resultado final de 16 bits
+    return sp + offset;
+}
+
+// ------------------------ ADD SP, r8 ----------------------
+// Opcode 0xE8
+void op_add_sp_r8(GameBoy* gb)
+{
+    gb->cpu.sp = add_sp_offset_logic(gb);
+}
+
+//------------------------ LD HL, SP+r8 ----------------------
+// Opcode 0xF8
+void op_ld_hl_sp_r8(GameBoy* gb)
+{
+    u16 res = add_sp_offset_logic(gb);
+    write_register_pair(gb, REG_PAIR_HL, res);
+}
+
 // Helper interno: Calcula y actualiza flags para una resta (A - val - carry)
 // Sirve para SUB (carry_in=0), CP (carry_in=0) y SBC (carry_in=flag_C)
 static void set_sub_sbc_flags(GameBoy* gb, u8 val, u8 carry_in) {
@@ -1478,7 +1526,7 @@ void op_push_rr(GameBoy* gb) {
     }
     else {
         // Casos normales: BC, DE, HL
-        value = get_register_pair(&gb->cpu, reg_pair_idx);
+        value = get_register_pair(gb, reg_pair_idx);
     }
     
     // 3. Escribir en la Pila (PUSH)
@@ -1522,7 +1570,7 @@ void op_pop_rr(GameBoy* gb) {
     }
     else {
         // --- CASO NORMAL: BC, DE, HL ---
-        write_register_pair(&gb->cpu, reg_pair_idx, value);
+        write_register_pair(gb, reg_pair_idx, value);
     }
 }
 
