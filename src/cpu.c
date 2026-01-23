@@ -275,12 +275,7 @@ Instruction instruction_set[256] = {
 // Helpers para leer/escribir pares de registros
 // Nota: GameBoy es Little Endian, pero los registros pares se leen High-Low.
 // BC -> B es el byte alto, C es el byte bajo.
-static inline u16 get_bc(Cpu* cpu) { return (cpu->b << 8) | cpu->c; }
-static inline void set_bc(Cpu* cpu, u16 value) { cpu->b = (value >> 8) & 0xFF; cpu->c = value & 0xFF; }
-static inline u16 get_de(Cpu* cpu) { return (cpu->d << 8) | cpu->e; }
-static inline void set_de(Cpu* cpu, u16 value) { cpu->d = (value >> 8) & 0xFF; cpu->e = value & 0xFF; }
-static inline u16 get_hl(Cpu* cpu) { return (cpu->h << 8) | cpu->l; }
-static inline void set_hl(Cpu* cpu, u16 value) { cpu->h = (value >> 8) & 0xFF; cpu->l = value & 0xFF; }
+static inline u16 get_hl(GameBoy* gb) { return (gb->cpu.h << 8) | gb->cpu.l; }
 
 // Función auxiliar que muestra el estado de la CPU
 void print_cpu_state(const Cpu* cpu) {
@@ -412,16 +407,16 @@ void handle_interrupts(GameBoy* gb) {
 }
 
 // Helper para obtener punteros a registros según el índice (0-7)
-u8* get_register_ptr(Cpu* cpu, int index) {
+u8* get_register_ptr(GameBoy* gb, int index) {
     switch (index) {
-        case 0: return &cpu->b;
-        case 1: return &cpu->c;
-        case 2: return &cpu->d;
-        case 3: return &cpu->e;
-        case 4: return &cpu->h;
-        case 5: return &cpu->l;
+        case 0: return &gb->cpu.b;
+        case 1: return &gb->cpu.c;
+        case 2: return &gb->cpu.d;
+        case 3: return &gb->cpu.e;
+        case 4: return &gb->cpu.h;
+        case 5: return &gb->cpu.l;
         case 6: return NULL; // No hay registro HL
-        case 7: return &cpu->a;
+        case 7: return &gb->cpu.a;
     }
     return NULL; // Indicador de error
 }
@@ -501,23 +496,23 @@ void op_ld_r_r(GameBoy* gb) {
     u8 val;
     if (src_idx == 6) {
         // Origen es memoria (HL)
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
         // Origen es registro
-        val = *get_register_ptr(&gb->cpu, src_idx);
+        val = *get_register_ptr(gb, src_idx);
     }
 
     // --- FASE 2: ESCRITURA DEL VALOR (Destino) ---
     if (dst_idx == 6) {
         // Destino es memoria (HL)
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         bus_write(gb, addr, val);
     }
     else {
         // Destino es registro
-        u8* dest_ptr = get_register_ptr(&gb->cpu, dst_idx);
+        u8* dest_ptr = get_register_ptr(gb, dst_idx);
         *dest_ptr = val;
     }
 }
@@ -538,12 +533,12 @@ void op_ld_r_d8(GameBoy* gb) {
     // 4. Escribimos el valor inmediato en  destino
     if (reg_idx == 6) { 
         // Escribir en (HL) 
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         bus_write(gb, addr, val);
     }
     else {
         // Escribir en registro
-        u8* reg = get_register_ptr(&gb->cpu, reg_idx);
+        u8* reg = get_register_ptr(gb, reg_idx);
 
         // Un assert o check simple por seguridad
         if (reg) {
@@ -836,7 +831,7 @@ void op_inc_r(GameBoy* gb) {
         val = bus_read(gb, addr);
     }
     else {
-        reg_ptr = get_register_ptr(&gb->cpu, reg_idx);
+        reg_ptr = get_register_ptr(gb, reg_idx);
         val = *reg_ptr;
     }
 
@@ -860,7 +855,7 @@ void op_inc_r(GameBoy* gb) {
 
     // 5. Escribir el resultado
     if (reg_idx == 6) {
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         bus_write(gb, addr, result);
     }
     else {
@@ -881,12 +876,12 @@ void op_dec_r(GameBoy* gb) {
     
     if (reg_idx == 6) {
         // Caso especial (HL): Leemos de memoria
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
         // Caso registro directo
-        reg_ptr = get_register_ptr(&gb->cpu, reg_idx);
+        reg_ptr = get_register_ptr(gb, reg_idx);
         val = *reg_ptr;
     }
 
@@ -908,7 +903,7 @@ void op_dec_r(GameBoy* gb) {
     
     // 5. Escribimos el resultado
     if (reg_idx == 6) {
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         bus_write(gb, addr, result);
     }
     else {
@@ -1182,11 +1177,11 @@ void op_add_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) { // Caso (HL)
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
-        val = *get_register_ptr(&gb->cpu, reg_idx);
+        val = *get_register_ptr(gb, reg_idx);
     }
 
     // 2. Calcular flags (Carry in es 0)
@@ -1218,11 +1213,11 @@ void op_adc_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
-        val = *get_register_ptr(&gb->cpu, reg_idx);
+        val = *get_register_ptr(gb, reg_idx);
     }
 
     // Extraer Carry actual (0 o 1)
@@ -1315,11 +1310,11 @@ void op_sub_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) { // Caso (HL)
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
-        val = *get_register_ptr(&gb->cpu, reg_idx);
+        val = *get_register_ptr(gb, reg_idx);
     }
 
     // 2. Calcular flags (Carry in es 0 para SUB)
@@ -1351,11 +1346,11 @@ void op_sbc_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
-        val = *get_register_ptr(&gb->cpu, reg_idx);
+        val = *get_register_ptr(gb, reg_idx);
     }
 
     // EXTRAEMOS EL CARRY ACTUAL (0 o 1)
@@ -1387,11 +1382,11 @@ void op_cp_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
-        val = *get_register_ptr(&gb->cpu, reg_idx);
+        val = *get_register_ptr(gb, reg_idx);
     }
 
     // Solo calculamos flags, NO modificamos A
@@ -1426,11 +1421,11 @@ void op_and_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
-        val = *get_register_ptr(&gb->cpu, reg_idx);
+        val = *get_register_ptr(gb, reg_idx);
     }
 
     // 2. Operación
@@ -1456,11 +1451,11 @@ void op_or_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
-        val = *get_register_ptr(&gb->cpu, reg_idx);
+        val = *get_register_ptr(gb, reg_idx);
     }
 
     // 2. Operación
@@ -1486,11 +1481,11 @@ void op_xor_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(&gb->cpu);
+        u16 addr = get_hl(gb);
         val = bus_read(gb, addr);
     }
     else {
-        val = *get_register_ptr(&gb->cpu, reg_idx);
+        val = *get_register_ptr(gb, reg_idx);
     }
 
     // 2. Operación
@@ -1622,7 +1617,7 @@ void op_jp_cc_nn(GameBoy* gb) {
 // ------------------- JP (HL) -> Opcode 0xE9 --------------------
 // ¡CUIDADO! No lee memoria, salta a la dirección que conitene HL.
 void op_jp_hl(GameBoy* gb) {
-    u16 hl = get_hl(&gb->cpu);
+    u16 hl = get_hl(gb);
     gb->cpu.pc = hl;
 }
 
