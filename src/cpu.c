@@ -216,7 +216,7 @@ Instruction instruction_set[256] = {
     [0xC8] = { .func = op_ret_cc, .name = "RET Z", .cycles = 2, .length = 1 },
     [0xC9] = { .func = op_ret, .name = "RET", .cycles = 4, .length = 1 },
     [0xCA] = { .func = op_jp_cc_nn, .name = "JP Z,a16", .cycles = 3, .length = 3 },
-    [0xCB] = { .func = NULL, .name = "PREFIX CB", .cycles = 0, .length = 1 },
+    [0xCB] = { .func = op_prefix_cb, .name = "PREFIX CB", .cycles = 1, .length = 1 },
     [0xCC] = { .func = op_call_cc_nn, .name = "CALL Z,a16", .cycles = 3, .length = 3 },
     [0xCD] = { .func = op_call_nn, .name = "CALL a16", .cycles = 6, .length = 3 },
     [0xCE] = { .func = op_adc_a_d8, .name = "ADC A,d8", .cycles = 2, .length = 2 },
@@ -1766,3 +1766,184 @@ void op_rst(GameBoy* gb) {
     // 4. Saltar
     gb->cpu.pc = target_addr;
 } 
+
+//========================= Instrucciones CB ==================================
+
+// Helper para leer el valor (sea registro o memoria)
+u8 cb_read(GameBoy* gb, u8 reg_idx)
+{
+    if (reg_idx == 6) {
+        u16 hl = get_register_pair(gb, REG_PAIR_HL);
+        return bus_read(gb, hl);
+    }
+    return *(get_register_ptr(gb, reg_idx));
+}
+
+// Helper para escribir el valor (sea registro o memoria)
+void cb_write(GameBoy* gb, u8 reg_idx, u8 value)
+{
+    if (reg_idx == 6) {
+        u16 hl = get_register_pair(gb, REG_PAIR_HL);
+        bus_write(gb, hl, value);
+    }
+    else {
+        *(get_register_ptr(gb, reg_idx)) = value;
+    }
+}
+
+// ------------ Grupo 1: Rotaciones y Shifts (0x00 - 0x3F) ------------------------
+// Bits 0-2: Registro
+// Bits 3-7: Tipo de operación (RLC, RRC, RL, RR, SLA, SRA, SWAP, SRL)
+void cb_group_rot_shift(GameBoy* gb, u8 opcode, u8 reg_idx)
+{
+    u8 value = cb_read(gb, reg_idx);
+    u8 result = 0;
+    u8 flag_c = 0;
+
+    // Decodificamos la operación (Bits 3-5)
+    // 0=RLC, 1=RRC, 2=RL, 3=RR, 4=SLA, 5=SRA, 6=SWAP, 7=SRL
+    u8 operation = (opcode >> 3) & 0x07;
+
+    switch (operation)
+    {
+    case 0: // RLC (Rotate Left Circular)
+        flag_c = (value >> 7) & 1;
+        result = (value << 1) | flag_c;
+        break;
+
+    case 1: // RRC (Rotate Right Circular)
+        flag_c = value & 1;
+        result = (value >> 1) | (flag_c << 7);
+        break;
+
+    case 2: // RL (Rotate Left through Carry)
+    {
+        flag_c = (value >> 7) & 1;
+        u8 old_c = (gb->cpu.f & FLAG_C) ? 1 : 0;
+        result = (value << 1) | old_c;
+        break;
+    }
+    case 3: // RR (Rotate Right through Carry)
+    {
+        flag_c = value & 1;
+        u8 old_c = (gb->cpu.f & FLAG_C) ? 1 : 0;
+        result = (value >> 1) | (old_c << 7);
+        break;
+    }
+    case 4: // SLA (Shift Left Arithmetic)
+        flag_c = (value >> 7) & 1;
+        result = value << 1; // Bit 0 se rellena con 0
+        break;
+
+    case 5: // SRA (Shift Right Arithmetic)
+        flag_c = value & 1;
+        result = (value >> 1) | (value & 0x80); // Mantenemos bit 7 original
+        break;
+
+    case 6: // SWAP (Intercambiar nibbles)
+        result = ((value & 0x0F) << 4) | ((value & 0xF0) >> 4);
+        flag_c = 0; // SWAP limpia el Carry
+        break;
+
+    case 7: // SRL (Shift Right Logical - Rellena con 0)
+        flag_c = value & 1;
+        result = value >> 1; // Bit 7 se rellena con 0
+        break;
+
+    default:
+        fprintf(stderr, "Error en cb_group_rot_shift: opcode %02X operacion fuera de rango - %d\n", opcode, operation);
+        exit(-100);
+        break;
+    }
+
+    // Escribimos resultado
+    cb_write(gb, reg_idx, result);
+
+    // Actualizamos Flags
+    gb->cpu.f = 0;
+    if (result == 0) gb->cpu.f |= FLAG_Z;
+    if (flag_c)      gb->cpu.f |= FLAG_C;
+    // N y H siempre son 0 en este grupo
+}
+
+// ------------------------- Grupo 2: BIT (0x40 - 0x7F) ----------------------
+// Comprueba si un bit es 1 o 0
+// Solo toca flags, no escribe en registros
+void cb_group_bit(GameBoy* gb, u8 opcode, u8 reg_idx)
+{
+    u8 value = cb_read(gb, reg_idx);
+
+    // Qué bit comprobar (Bits 3-5)
+    int bit_to_test = (opcode >> 3) & 0x07;
+
+    // Comprobamos
+    bool is_set = (value >> bit_to_test) & 1;
+
+    // FLAGS:
+    // Z: 1 si el bit es 0
+    if (!is_set) gb->cpu.f |= FLAG_Z;
+    else         gb->cpu.f &= ~FLAG_Z;
+
+    gb->cpu.f &= ~FLAG_N; // N siempre 0
+    gb->cpu.f |= FLAG_H;  // H Siempre 1
+    // C no se ve afectado
+}
+
+// --------------------- Grupo 3: RES y SET (0x80 - 0xFF) --------------------
+void cb_group_res_set(GameBoy* gb, u8 opcode, u8 reg_idx)
+{
+    u8 value = cb_read(gb, reg_idx);
+    int bit = (opcode >> 3) & 0x07;
+
+    if ((opcode >> 6) == 2) {
+        // RES (0x80 - 0xBF) -> Reset bit (Apagar)
+        value &= ~(1 << bit);
+    }
+    else {
+        // SET (0xC0 - 0xFF) -> Set bit (Encender)
+        value |= (1 << bit);
+    }
+
+    cb_write(gb, reg_idx, value);
+    // RES y SET no modifican flags
+}
+
+// ---------------------- La Función Maestra (Dispatcher) ----------------------
+// PREFIX CB - Opcode 0xCB
+void op_prefix_cb(GameBoy* gb)
+{
+    // 1. Leer el SIGUIENTE byte (el opcode real CB)
+    u8 cb_opcode = bus_read(gb, gb->cpu.pc);
+    gb->cpu.pc++; // Avanzamos PC por el opcode leído de la familia CB
+
+    // 2. Determinar el Registro (Bits 0-2)
+    u8 reg_idx = cb_opcode & 0x07;
+
+    // 3. Gestión de Ciclos Base
+    // Las instrucciones CB sobre registros tardan 2 M-ciclos (1 base + 1 extra).
+    // Las instrucciones CB sobre (HL) tardan 4 M-ciclos (1 base + 3 extra).
+    // En cpu_step() ya se sumo +1 por el CB, aquí sumamos el coste extra
+    if (reg_idx == 6) gb->cpu.cycles += 3;
+    else gb->cpu.cycles += 1;
+
+    // 4. Enrutado por Grupos (Bits 6-7)
+    u8 group = (cb_opcode >> 6) & 0x03;
+
+    switch (group)
+    {
+    case 0: // 0x00 - 0x3F: Rotates & Shifts
+        cb_group_rot_shift(gb, cb_opcode, reg_idx);
+        break;
+    case 1: // 0x40 - 0x7F: BIT
+        cb_group_bit(gb, cb_opcode, reg_idx);
+        break;
+    case 2: // 0x80 - 0xBF: RES
+    case 3: // 0xC0 - 0xFF: SET
+        cb_group_res_set(gb, cb_opcode, reg_idx);
+        break;
+    default:
+        fprintf(stderr, "Error en op_prefix_cb: CB opcode %02X, grupo %d fuera de rango\n", cb_opcode, group);
+        exit(-99);
+        break;
+    }
+}
