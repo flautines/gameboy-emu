@@ -19,6 +19,10 @@ typedef struct {
     // Registros de Hardware (IO)
     u8 io[0x80]; // $FF00 - $FF7F
 
+    // --- MODO TEST ---
+    bool test_mode;         // Si es true, ignoramos el mapeo anterior
+    u8 flat_memory[65536];  // 64KB de RAM plana para los tests JSON
+
     // ... Punteros al Cartucho (Lo veremos luego)
 } Bus;
 

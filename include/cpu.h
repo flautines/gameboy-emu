@@ -16,7 +16,7 @@
 #define INT_JOYPAD   0x10 // Bit 4: Joypad Press
 
 // Helper para el Flag Z (Zero)
-#define CHECK_ZERO(value) ((value) == 0 ? FLAG_Z : 0)
+#define CHECK_ZERO(value) (((value) & 0xFF) == 0 ? FLAG_Z : 0)
 
 // Helpers para Half Carry
 // Comprobamos si la suma de los nibbles bajos desborda (supera 15)

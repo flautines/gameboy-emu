@@ -274,13 +274,13 @@ Instruction instruction_set[256] = {
 
 // Función auxiliar que muestra el estado de la CPU
 void print_cpu_state(const Cpu* cpu) {
-    printf("AF 0x%02X%02X ", cpu->a, cpu->f);
-    printf("BC 0x%02X%02X ", cpu->b, cpu->c);
-    printf("DE 0x%02X%02X ", cpu->d, cpu->e);
-    printf("HL 0x%02X%02X ", cpu->h, cpu->l);
+    printf("AF %d %d  ", cpu->a, cpu->f);
+    printf("BC %d %d  ", cpu->b, cpu->c);
+    printf("DE %d %d  ", cpu->d, cpu->e);
+    printf("HL %d %d  ", cpu->h, cpu->l);
 
-    printf("SP: 0x%04X ", cpu->sp);
-    printf("PC: 0x%04X ", cpu->pc);
+    printf("SP: %d  ", cpu->sp);
+    printf("PC: %d  ", cpu->pc);
 
     // Mostrar flags de Z, N, H, C por separado
     printf("%c %c %c %c\t",
@@ -310,8 +310,9 @@ void cpu_init(Cpu* cpu) {
     cpu->l = 0x4D;
 
     // Estado interno
-    cpu->ime = false;    // Interrupts deshabilitados
-    cpu->halted = false; // No en modo halt
+    cpu->ime = false;      // Interrupciones deshabilitados
+    cpu->halted = false;   // No en modo halt
+    cpu->halt_bug = false; // No HALT BUG
 }
 
 // Retorna el número de M-Cycles consumidos por la instrucción ejecutada
@@ -359,10 +360,10 @@ int cpu_step(GameBoy* gb) {
     // 6. Ejecutamos la instrucción
     if (instr->func) {
         // Debug: Imprimir la instrucción que se va a ejecutar
-        printf("0x%04X: %s (0x%02X)\n", gb->cpu.pc, instr->name, opcode);
+        //printf("%d: %s (0x%02X)\n", gb->cpu.pc, instr->name, opcode);
         instr->func(gb);
         // Debug: Imprimir el estado de la CPU después de la instrucción
-        print_cpu_state(&gb->cpu);
+        //print_cpu_state(&gb->cpu);
     } else {
         // Instrucción no implementada
         printf("Instrucción no implementada: %s (0x%02X) en PC:0x%04X\n", instr->name, opcode, gb->cpu.pc);
@@ -966,6 +967,14 @@ void op_add_hl_rr(GameBoy* gb) {
         gb->cpu.f &= ~FLAG_H;
     }
 
+    // Flag C: Carry si el resultado no cabe en 16 bits
+    if (result > 0xFFFF) {
+        gb->cpu.f |= FLAG_C;
+    }
+    else {
+        gb->cpu.f &= ~FLAG_C;
+    }
+
     // Flag Z: NO SE MODIFICA.
     // Mantenemos el valor que tuviera antes.
 
@@ -1156,10 +1165,19 @@ static void set_add_adc_flags(GameBoy* gb, u8 val, u8 carry_in) {
     // Siempre es 0 en sumas. (Ya lo hicimos al limpiar F)
 
     // 3. Half Carry (H)
+    // Comprobamos si la suma de los nibbles bajos desborda (supera 15)
+    // Fórmula: (A & 0xF) + (val & 0xF) + carry_in > 0xF
     gb->cpu.f |= CHECK_HALF_CARRY_ADD(a, val, carry_in);
+    //if (((a & 0x0F) + (val & 0x0F) + carry_in) > 0x0F) {
+    //    gb->cpu.f |= FLAG_H;
+    //}
 
-    // 4. Carry Flag
+    // 4. Carry Flag (C)
+    // Si el resultado total no cabe en 8 bits (> 255)
     gb->cpu.f |= CHECK_CARRY_ADD(result);
+    //if (result > 0xFF) {
+    //    gb->cpu.f |= FLAG_C;
+    //}
 }
 
 // ------------------------ ADD ----------------------
@@ -1227,7 +1245,7 @@ void op_adc_a_r(GameBoy* gb) {
 
  // ADC A, d8 (Opcode CE)
  void op_adc_a_d8(GameBoy* gb) {
-    u8 val = bus_read(gb, gb->cpu.pc - 1);
+    u8 val = bus_read(gb, gb->cpu.pc);
     gb->cpu.pc++;
 
     u8 carry = (gb->cpu.f & FLAG_C) ? 1 : 0;
@@ -1349,7 +1367,7 @@ void op_sbc_a_r(GameBoy* gb) {
     }
 
     // EXTRAEMOS EL CARRY ACTUAL (0 o 1)
-    u8 carry = gb->cpu.f ? 1 : 0;
+    u8 carry = (gb->cpu.f & FLAG_C) ? 1 : 0;
 
     set_sub_sbc_flags(gb, val, carry);
 
@@ -1362,7 +1380,7 @@ void op_sbc_a_d8(GameBoy* gb) {
     u8 val = bus_read(gb, gb->cpu.pc);
     gb->cpu.pc++;
 
-    u8 carry = gb->cpu.f ? 1 : 0;
+    u8 carry = (gb->cpu.f & FLAG_C) ? 1 : 0;
 
     set_sub_sbc_flags(gb, val, carry);
     gb->cpu.a = gb->cpu.a - val - carry;
@@ -1405,7 +1423,7 @@ static void set_logic_op_flags(GameBoy* gb, bool h_flag) {
     gb->cpu.f |= CHECK_ZERO(gb->cpu.a);
 
     // Flag H: Depende de la instrucción
-    gb->cpu.f |= h_flag;
+    if (h_flag) gb->cpu.f |= FLAG_H;
 }
 
 // ------------------------- AND ------------------------
@@ -1595,8 +1613,8 @@ void op_jp_nn(GameBoy* gb) {
 
 // ---------------- JP cc, nn (Condicional) ------------------
 void op_jp_cc_nn(GameBoy* gb) {
-    u8 opcode = bus_read(gb, gb->cpu.pc);
-    int cond = (opcode >> 3) && 0x03; // Bits 3-4
+    u8 opcode = bus_read(gb, gb->cpu.pc - 1);
+    int cond = (opcode >> 3) & 0x03; // Bits 3-4
 
     // Siempre leemos los argumentos para avanzar el PC correctamente
     // si la condición NO se cumple.

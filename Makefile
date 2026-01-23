@@ -26,6 +26,10 @@ all: $(TARGET)
 $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS)
 
+# Test
+test: $(OBJ)
+	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS) -lcjson
+
 # Cómo compilar cada archivo .c a .o
 build/%.o: src/%.c
 	mkdir -p build

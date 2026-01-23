@@ -1,47 +1,49 @@
 #include <stdio.h>
+#include <string.h>
 #include "gb.h" // Incluir solo gb.h nos da acceso a todo
+#include "tests.h" // Prueba de opcodes
 
 int main(void) {
-    printf("--- INCIANDO TEST DE ARQUITECTURA GAMEBOY ---\n");
+    printf("--- TEST DE CPU ---\n");
+    printf("Opcodes 0x00 - 0xFF\n");
+    char test_dir[] = "tests/sm83/v1/";
+    char test_file[80];
+    for (int opcode = 0x00; opcode <= 0xFF; opcode ++) {
+        // 0x10 - STOP 
+        // 0x76 - HALT
+        // 0xFB - EI
+        if (opcode == 0x10 || opcode == 0x76
+        ||  opcode == 0xd3 || opcode == 0xdb
+        ||  opcode == 0xdd || opcode == 0xe3
+        ||  opcode == 0xe4 || opcode == 0xeb
+        ||  opcode == 0xec || opcode == 0xed
+        ||  opcode == 0xf4 || opcode == 0xfb
+        ||  opcode == 0xfc || opcode == 0xfd ) 
+            continue;
 
-    // 1. Creación de la instancia
-    // Al usar instancias directas en el struct, no necesitamos mallocs complejos
-    GameBoy gb;
+        memset(test_file, 0, sizeof(test_file));
 
-    // 2. Inicialización simple (limpiar basura de memoria)
-    cpu_init(&gb.cpu);
-    printf("GameBoy creada. PC inicial: 0x%04X\n", gb.cpu.pc);
-
-    // Ejecutamos un ciclo
-    cpu_step(&gb);
-
-    // Como aún no disponemos de función para cargar cartucho, asignamos el PC
-    // a WRAM para pruebas de instrucciones
-    gb.cpu.pc = 0xC001; // Dirección en WRAM
-
-    // Test de instrucciones CP A, r y CP A, d8
-    // r = B, C, D, E, H, L, (HL), A
-    // Cargamos las instrucciones en memoria
-    // Apuntamos HL a 0xC500 y colocamos un valor allí
-    gb.cpu.h = 0xC5;
-    gb.cpu.l = 0x00;
-    bus_write(&gb, 0xC500, 0x01); // Valor en (HL)
-    bus_write(&gb, 0xC001, 0xb8); // CP B
-    bus_write(&gb, 0xC002, 0xb9); // CP C
-    bus_write(&gb, 0xC003, 0xba); // CP D
-    bus_write(&gb, 0xC004, 0xbb); // CP E
-    bus_write(&gb, 0xC005, 0xbc); // CP H
-    bus_write(&gb, 0xC006, 0xbd); // CP L
-    bus_write(&gb, 0xC007, 0xbe); // CP (HL)
-    bus_write(&gb, 0xC008, 0xbf); // CP A
-    bus_write(&gb, 0xC009, 0xFE); // CP d8
-    bus_write(&gb, 0xC00A, 0x05); // d8 = 0x05
-    // Ejecutamos las instrucciones
-    for (int i = 0; i < 9; i++) {
-        cpu_step(&gb);
+        // CB 0x00 - 0xFF
+        if (opcode == 0xCB) {
+            for (int cb_opcode = 0x00; cb_opcode <= 0xFF; cb_opcode ++) {
+                sprintf(test_file, "%scb %02x.json", test_dir, cb_opcode);
+                if (run_tests_for_opcode(test_file)) {
+                    printf(" OK\n");
+                }
+                else {
+                    return -80;
+                }
+            }
+            opcode++;
+        }
+        sprintf(test_file, "%s%02x.json", test_dir, opcode);
+        if (run_tests_for_opcode(test_file)) {
+            printf(" OK\n");
+        }
+        else {
+            return -79;
+        }
     }
-
     
-    printf("\n--- TEST FINALIZADO CON ÉXITO ---\n");
     return 0;
 }

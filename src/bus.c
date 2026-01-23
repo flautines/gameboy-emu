@@ -2,6 +2,12 @@
 #include "gb.h"
 
 u8 bus_read(GameBoy* gb, u16 address) {
+    // 1. MODO TEST
+    if (gb->bus.test_mode) {
+        return gb->bus.flat_memory[address];
+    }
+    
+    // 2. MODO PRODUCCIÓN
     // ROM (Cartucho)
     if (address < 0x8000) {
         return 0; // TODO: Cartucho
@@ -73,6 +79,15 @@ u16 bus_read16(GameBoy* gb, u16 addr) {
 }
 
 void bus_write(GameBoy* gb, u16 address, u8 value) {
+    // 1. MODO TEST (Usamos flat_memory)
+    if (gb->bus.test_mode) {
+        // Escribimos siempre en la memoria plana (para que el JSON verify funcione)
+        gb->bus.flat_memory[address] = value;
+
+        return; // Salimos, no hacemos nada más
+    }
+
+    // 2. MODO PRODUCCIÓN
     if (address < 0x8000) {
         // ¡IMPORTANTE! Escribir en ROM configura el MBC (Banking)
         // TODO: Cartucho
