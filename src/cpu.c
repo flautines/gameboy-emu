@@ -272,11 +272,6 @@ Instruction instruction_set[256] = {
     
 };
 
-// Helpers para leer/escribir pares de registros
-// Nota: GameBoy es Little Endian, pero los registros pares se leen High-Low.
-// BC -> B es el byte alto, C es el byte bajo.
-static inline u16 get_hl(GameBoy* gb) { return (gb->cpu.h << 8) | gb->cpu.l; }
-
 // Función auxiliar que muestra el estado de la CPU
 void print_cpu_state(const Cpu* cpu) {
     printf("AF 0x%02X%02X ", cpu->a, cpu->f);
@@ -496,7 +491,7 @@ void op_ld_r_r(GameBoy* gb) {
     u8 val;
     if (src_idx == 6) {
         // Origen es memoria (HL)
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -507,7 +502,7 @@ void op_ld_r_r(GameBoy* gb) {
     // --- FASE 2: ESCRITURA DEL VALOR (Destino) ---
     if (dst_idx == 6) {
         // Destino es memoria (HL)
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         bus_write(gb, addr, val);
     }
     else {
@@ -533,7 +528,7 @@ void op_ld_r_d8(GameBoy* gb) {
     // 4. Escribimos el valor inmediato en  destino
     if (reg_idx == 6) { 
         // Escribir en (HL) 
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         bus_write(gb, addr, val);
     }
     else {
@@ -855,7 +850,7 @@ void op_inc_r(GameBoy* gb) {
 
     // 5. Escribir el resultado
     if (reg_idx == 6) {
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         bus_write(gb, addr, result);
     }
     else {
@@ -876,7 +871,7 @@ void op_dec_r(GameBoy* gb) {
     
     if (reg_idx == 6) {
         // Caso especial (HL): Leemos de memoria
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -903,7 +898,7 @@ void op_dec_r(GameBoy* gb) {
     
     // 5. Escribimos el resultado
     if (reg_idx == 6) {
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         bus_write(gb, addr, result);
     }
     else {
@@ -1177,7 +1172,7 @@ void op_add_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) { // Caso (HL)
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -1213,7 +1208,7 @@ void op_adc_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -1310,7 +1305,7 @@ void op_sub_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) { // Caso (HL)
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -1346,7 +1341,7 @@ void op_sbc_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -1382,7 +1377,7 @@ void op_cp_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -1421,7 +1416,7 @@ void op_and_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -1451,7 +1446,7 @@ void op_or_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -1481,7 +1476,7 @@ void op_xor_a_r(GameBoy* gb) {
     u8 val;
 
     if (reg_idx == 6) {
-        u16 addr = get_hl(gb);
+        u16 addr = get_register_pair(gb,  REG_PAIR_HL);
         val = bus_read(gb, addr);
     }
     else {
@@ -1617,7 +1612,7 @@ void op_jp_cc_nn(GameBoy* gb) {
 // ------------------- JP (HL) -> Opcode 0xE9 --------------------
 // ¡CUIDADO! No lee memoria, salta a la dirección que conitene HL.
 void op_jp_hl(GameBoy* gb) {
-    u16 hl = get_hl(gb);
+    u16 hl = get_register_pair(gb,  REG_PAIR_HL);
     gb->cpu.pc = hl;
 }
 
