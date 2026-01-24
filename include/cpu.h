@@ -22,12 +22,10 @@
 // Comprobamos si la suma de los nibbles bajos desborda (supera 15)
 // Fórmula: (A & 0xF) + (val & 0xF) + carry_in > 0xF
 #define CHECK_HALF_CARRY_ADD(A, val, carry_in) ((((A) & 0x0F) + ((val) & 0x0F) + ((carry_in) & 0x0F)) > 0x0F ? FLAG_H : 0)
-
 #define CHECK_HALF_CARRY_SUB(A, val, carry_in) (((((A) & 0x0F) - (carry_in)) < ((val) & 0x0F)) ? FLAG_H : 0)
 
 // Si el resultado total no cabe en 8 bits (> 255)
 #define CHECK_CARRY_ADD(result) ((result) > 0xFF ? FLAG_C : 0)
-
 #define CHECK_CARRY_SUB(result) ((result) < 0 ? FLAG_C : 0)
 
 typedef struct {

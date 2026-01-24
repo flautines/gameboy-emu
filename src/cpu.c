@@ -9,6 +9,9 @@ typedef struct {
     u8 length;                 // Longitud en bytes de la instrucción
 } Instruction;
 
+// Forward declaration (la usaremos varias veces)
+void push_pc(GameBoy* gb);
+
 void print_cpu_state(const Cpu* cpu);
 
 // Tabla de instrucciones (completa con todas las instrucciones)
@@ -315,8 +318,78 @@ void cpu_init(Cpu* cpu) {
     cpu->halt_bug = false; // No HALT BUG
 }
 
+// Los dispositivos usarán esta función para solicitar una interrupción
+void cpu_request_interrupt(GameBoy* gb, u8 type)
+{
+    gb->cpu.if_reg |= type;
+}
+
+void cpu_handle_interrupts(GameBoy* gb) 
+{
+    Cpu* cpu = &gb->cpu;
+
+    // Si hay interrupciones pendientes (en IF) Y habilitadas (en IE)
+    // Nota: Esta comprobación sirve también para despertar de HALT
+    // incluso si IME está desactivado (HALT bug behavior simplificado)
+    if (cpu->if_reg & cpu->ie) {
+        gb->cpu.halted = false;
+    }
+
+    // Si el Interrupt Master Enable (IME) está activo, procedemos al despacho
+    if (cpu->ime) {
+
+        // Obtenemos las interrupciones activas que están permitidas
+        u8 fired = cpu->if_reg & cpu->ie;
+
+        if (fired > 0) {
+            // Deshabilitamos IME automáticamente
+            cpu->ime = false;
+
+            // Buscamos cuál disparar según prioridad (Bit 0 mayor prioridad)
+            u8 target_bit = 0;
+            u16 vector = 0;
+
+            if (fired & INT_VBLANK) {
+                target_bit = INT_VBLANK;
+                vector = 0x0040;
+            }
+            else if (fired & INT_LCD_STAT) {
+                target_bit = INT_LCD_STAT;
+                vector = 0x0048;
+            }
+            else if (fired & INT_TIMER) {
+                target_bit = INT_TIMER;
+                vector = 0x0050;
+            }
+            else if (fired & INT_SERIAL) {
+                target_bit = INT_SERIAL;
+                vector = 0x0058;
+            }
+            else if (fired & INT_JOYPAD) {
+                target_bit = INT_JOYPAD;
+                vector = 0x0060;
+            }
+            // Consumir la interrupción (Limpiar bit en IF)
+            cpu->if_reg &= ~target_bit;
+
+            // --- EJECUCIÓN DEL SALTO ---
+            // 1. Push PC actual al Stack
+            push_pc(gb);
+
+            // 2. Saltar al vector
+            cpu->pc = vector;
+
+            // 3. Coste temporal: 5 M-Cycles (20 T-Cycles)
+            cpu->cycles += 5;
+        }
+    }
+}
+
 // Retorna el número de M-Cycles consumidos por la instrucción ejecutada
 int cpu_step(GameBoy* gb) {
+    // 0. Manejo de Interrupciones
+    cpu_handle_interrupts(gb);
+    
     // --- MODO STOP (Hibernación) ---
     if (gb->cpu.stopped) {
         // En hardware real, nada avanza.
@@ -372,34 +445,6 @@ int cpu_step(GameBoy* gb) {
 
     // 6. Devolvemos el total acumulado para este paso
     return gb->cpu.cycles;
-}
-
-// Los dispositivos usarán esta función para solicitar una interrupción
-void cpu_request_interrupt(GameBoy* gb, u8 type) {
-    // Activamos el bit correspondiente en IF
-    gb->cpu.if_reg |= type;
-
-    // Si la CPU estaba dormida (HALT), ¡despierta!
-    // Nota: Esto es independiente de IME o IE. Un HALT siempre se rompe
-    // si ocurre una interrupción, aunque luego no se ejecute si está bloqueada.
-    gb->cpu.halted = false;
-}
-
-// TODO: Esta función todavía no gestiona toda la lógica de interrupciones
-// solo hace las acciones para gestionar el flag halted.
-void handle_interrupts(GameBoy* gb) {
-    // Si hay alguna interrupción pendiente (IF) y habilitada (IE)
-    if (gb->cpu.ie & gb->cpu.if_reg & 0x1F) {
-
-        // ¡DESPIERTA!
-        // Esto saca a la CPU del bucle de HALT
-        gb->cpu.halted = false;
-
-        // Solo saltamos al vector (0x40, 0x48...) si IME está activo
-        if (gb->cpu.ime) {
-            // TODO: ... lógica de saltar al vector de interrupción ...
-        }
-    }
 }
 
 // Helper para obtener punteros a registros según el índice (0-7)

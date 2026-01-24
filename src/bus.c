@@ -1,5 +1,6 @@
 // src/bus.c
 #include "gb.h"
+#include "timer.h"
 
 u8 bus_read(GameBoy* gb, u16 address) {
     // 1. MODO TEST
@@ -45,16 +46,31 @@ u8 bus_read(GameBoy* gb, u16 address) {
         return 0xFF; // Comportamiento indefinido, devolver FF es seguro
     }
 
-    // IF register
-    else if (address == 0xFF0F) {
-        // Interceptamos lectura de IF
-        // Los bits superiores (5-7) de IF siempre devuelven 1 (hardware quirk)
-        return gb->cpu.if_reg | 0xE0;
-    }
-
     // I/O Registers
     else if (address >= 0xFF00 && address < 0xFF80) {
-        // Aquí manejamos joypad, timers, audio...
+        // 1. Joypad (0xFF00)
+        if (address == 0xFF00) {
+            // return joypad_read(gb, address);
+        }
+        // 2. Serial (0xFF01 - 0xFF02)
+        else if (address == 0xFF01 || address == 0xFF02) {
+            // return serial_read(gb, address);
+        }
+        // 3. Timers (0xFF04 - 0xFF07)
+        else if (address >= 0xFF04 && address <= 0xFF07) {
+            return timer_read(gb, address);
+        }
+        // Registro IF (Interrupt Flag)
+        else if (address == 0xFF0F) {
+            // Interceptamos lectura de IF
+            // Los bits superiores (5-7) de IF siempre devuelven 1 (hardware quirk)
+            return gb->cpu.if_reg | 0xE0;
+        }
+        // 4. Audio (0xFF10 - 0xFF26)
+        else if (address ) {
+            // return (gb, address);
+        }
+        // ... PPU, DMA, etc
         return gb->bus.io[address - 0xFF00];
     }
 
@@ -114,16 +130,36 @@ void bus_write(GameBoy* gb, u16 address, u8 value) {
     else if (address < 0xFF00) {
 
     }
-    // IF Register
-    else if (address == 0xFF0F) {
-        // Escritura en IF (El juego puede querer limpiar una interrupción manualmente)
-        gb->cpu.if_reg = value | 0xE0; // Bits 
-    }
     // I/O Registers
     else if (address >= 0xFF00 && address < 0xFF80) {
-        // IO Registers
-        // TODO: Algunos registros son de solo lectura o tienen efectos secundarios
+        // Guardamos el valor en el array "crudo"
+        // Aunque no usemos el valor, será útil para depurar
         gb->bus.io[address - 0xFF00] = value;
+
+        // --- Despachador ---
+
+        // 1. Joypad (0xFF00)
+        if (address == 0xFF00) {
+            // joypad_write(gb, address, value);
+        }
+        // 2. Serial (0xFF01 - 0xFF02)
+        else if (address == 0xFF01 || address == 0xFF02) {
+            // serial_write(gb, address, value)
+        }
+        // 3. Timers (0xFF04 - 0xFF07)
+        else if (address >= 0xFF04 && address <= 0xFF07) {
+            timer_write(gb, address, value);
+        }
+        // IF Register
+        else if (address == 0xFF0F) {
+        // Escritura en IF (El juego puede querer limpiar una interrupción manualmente)
+            gb->cpu.if_reg = value | 0xE0;
+        }
+        // 4. Audio (0xFF10 - 0xFF26)
+        else if (address >= 0xFF10 && address <= 0xFF26) {
+            // apu_write(gb, address, value);
+        }
+        // ... PPU, DMA, etc ...
     }
     // HRAM Registers
     else if (address < 0xFFFF) {
