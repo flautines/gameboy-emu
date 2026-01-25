@@ -5,12 +5,14 @@
 #include "bus.h"
 #include "cpu.h"
 #include "timer.h"
+#include "ppu.h"
 
 // El contexto global de la emulación
 struct GameBoy {
     Bus bus;
     Cpu cpu;
     Timer timer;
+    Ppu ppu;
     bool paused;
     
     // Contador global de ciclos de sistema
