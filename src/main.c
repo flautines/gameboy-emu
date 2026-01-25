@@ -5,7 +5,15 @@
 
 int main(void) 
 {
-    test_chapter5_timer();
+    #ifdef MODO_TEST
+        #if defined(TEST_CH5)
+        test_chapter5_timer();
+        #elif defined(TEST_CPU)
+        run_tests_for_opcode("tests/sm83/v1/00.json");
+        #endif
+    #else
+        printf("--- GAMEBOY EMU ---\n");
+    #endif
     
     return 0;
 }

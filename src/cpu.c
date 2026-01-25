@@ -387,9 +387,6 @@ void cpu_handle_interrupts(GameBoy* gb)
 
 // Retorna el número de M-Cycles consumidos por la instrucción ejecutada
 int cpu_step(GameBoy* gb) {
-    // 0. Manejo de Interrupciones
-    cpu_handle_interrupts(gb);
-    
     // --- MODO STOP (Hibernación) ---
     if (gb->cpu.stopped) {
         // En hardware real, nada avanza.
@@ -433,10 +430,14 @@ int cpu_step(GameBoy* gb) {
     // 6. Ejecutamos la instrucción
     if (instr->func) {
         // Debug: Imprimir la instrucción que se va a ejecutar
-        //printf("%d: %s (0x%02X)\n", gb->cpu.pc, instr->name, opcode);
+        #if defined(DEBUG)
+        printf("%d: %s (0x%02X)\n", gb->cpu.pc, instr->name, opcode);
+        #endif
         instr->func(gb);
         // Debug: Imprimir el estado de la CPU después de la instrucción
-        //print_cpu_state(&gb->cpu);
+        #if defined(DEBUG)
+        print_cpu_state(&gb->cpu);
+        #endif
     } else {
         // Instrucción no implementada
         printf("Instrucción no implementada: %s (0x%02X) en PC:0x%04X\n", instr->name, opcode, gb->cpu.pc);

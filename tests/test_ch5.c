@@ -1,4 +1,4 @@
-#include "gb.h"
+#include <gb.h>
 #include <stdio.h>
 
 bool test_chapter5_timer(void)

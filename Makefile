@@ -14,27 +14,47 @@ endif
 # Librerías para Raylib (Linux)
 #LDFLAGS = -lraylib -lm -lpthread
 
-# Archivos fuente y destino
-SRC = $(wildcard src/*.c)
-OBJ = $(SRC:src/%.c=build/%.o)
+# 1. Separamos el main del resto de la lógica
+SRC_CORE = $(filter-out src/main.c, $(wildcard src/*.c))
+OBJ_CORE = $(SRC_CORE:src/%.c=build/%.o)
+OBJ_MAIN = build/main.o
+
+ifdef TEST
+# Añadimos un flag para que el código sepa qué test correr
+    # Convierte 'cpu' en -DTEST_CPU
+    TEST_FLAG = -DTEST_$(shell echo $(TEST) | tr '[:lower:]' '[:upper:]')
+    CFLAGS += $(TEST_FLAG)
+endif
+
 TARGET = gameboy-emu
 
-# Regla principal
 all: $(TARGET)
 
+# Añadimos $(TEST_OBJ) a las d
+
 # Cómo crear el ejecutable final
-$(TARGET): $(OBJ)
-	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS)
+$(TARGET): $(OBJ_CORE) $(OBJ_MAIN)
+	$(CC) $(OBJ_CORE) $(OBJ_MAIN) -o $(TARGET) $(LDFLAGS)
 
 # Test
-test: $(OBJ)
-	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS) -lcjson
+test: CFLAGS += -DMODO_TEST
+# Añade librería cJson para el test de cpu
+ifeq ($(TEST),cpu)
+	LDFLAGS += -lcjson
+endif
+test: build/test_$(TEST).o $(OBJ_CORE) $(OBJ_MAIN)
+	$(CC) $(OBJ_CORE) $(OBJ_MAIN) build/test_$(TEST).o -o $(TARGET)_test $(LDFLAGS)
+	@echo "Binario de test listo: ./$(TARGET)_test"
 
 # Cómo compilar cada archivo .c a .o
 build/%.o: src/%.c
 	mkdir -p build
 	$(CC) $(CFLAGS) -c $< -o $@
 
+build/test_%.o: tests/test_%.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -c $< -o $@
+
 # Limpia el proyecto
 clean:
-	rm -fr build $(TARGET)
+	rm -fr build $(TARGET) $(TARGET)_test
