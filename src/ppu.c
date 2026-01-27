@@ -45,14 +45,16 @@ static void ppu_draw_scanline(GameBoy* gb)
     // Si el fondo está desactivado, salimos
     if (!(lcdc & 1)) return;
 
-    // 1. Determinar qué mapa de tiles usar (Bit 3)
+    // 1. Determinar qué mapa de tiles usar (Bit 3 de LCDC)
     u16 tile_map_base = (lcdc & (1 << 3)) ? 0x9C00 : 0x9800;
 
-    // 2. Determinar qué set de datos de tiles usar (Bit 4)
-    bool signed_tile_addressing = !(lcdc & (1 << 4));
+    // 2. Determinar qué set de Datos de Tiles usar (Bit 4 de LCDC)
+    // 0 = $8800 (Signed), 1 = $8000 (Unsigned)
+    bool is_signed = !(lcdc & (1 << 4));
     u16 tile_data_base = (lcdc & (1 << 4)) ? 0x8000 : 0x9000;
 
-    // Coordenada Y en el mapa de 256 x 256
+    // 3. Calcular la posición Y dentro del mapa global (256x256)
+    // Usamos uint8 para que el scroll haga "wrap around" (vuelva a 0) automáticamente
     u8 map_y = ly + scy;
 
     // File dentro del tile (0-7)
@@ -76,28 +78,25 @@ static void ppu_draw_scanline(GameBoy* gb)
 
         // Calcular dirección real de los datos del tile
         u16 tile_addr;
-        if (signed_tile_addressing) {
-            // Modo $8800: tile_id es signedd (-128 a 127)
-            int8_t id_signed = (int8_t)tile_id;
-            // Cada tile son 16 bytes.
-            // Base $9000. Si id es 0 -> $9000. Si id es -1 -> $8FF0
-            tile_addr = tile_data_base + (id_signed * 16);
+        if (is_signed) {
+            // Modo $8800: tile_id 0 está en $9000, los IDs van de -128 a 127
+            tile_addr = tile_data_base + ((int8_t)tile_id * 16);
         }
         else {
-            // Modo $8000: tile_id es unsigned (0 a 255)
+            // Modo $8000: tile_id está en $8000, los IDs van de 0 a 255
             tile_addr = tile_data_base + (tile_id * 16);
         }
 
         // Obtener el color ID (0-3)
-        u8 column_in_tile = map_x % 8;
-        u8 color_id = ppu_get_color_id(gb, tile_addr, tile_row, column_in_tile);
+        u8 pixel_x = map_x % 8;
+        u8 color_id = ppu_get_color_id(gb, tile_addr, tile_row, pixel_x);
 
-        // Mapear color ID a través de la paleta (BGP)
-        // BGP bits: 7-6 (Color 3), 5-4 (Color 2), 3-2 (Color 1), 1-0 (Color 0)
-        u8 real_color = (bgp >> (color_id * 2)) & 0x03;
+        // Aplicar la paleta (BGP) para obtener el tono de gris
+        // Los bits 0-1 de BGP son color 0, 2-3 color 1, etc.
+        u8 color = (bgp >> (color_id * 2)) & 0x03;
 
         // Escribir en el framebuffer
-        gb->ppu.frame_buffer[ly * SCREEN_WIDTH + px] = real_color;
+        gb->ppu.frame_buffer[ly * SCREEN_WIDTH + px] = color;
     }
 }
 void ppu_tick(GameBoy* gb, u8 m_cycles)
